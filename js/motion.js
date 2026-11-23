@@ -5,7 +5,15 @@ export function entrance() {
   if (!animate()) return;
   gsap.from('.hero-art', { scale: 1.035, duration: 1.25, ease: 'power2.out' });
   gsap.from(
-    ['.eyebrow', '.hero h1 span', '.hero h1 em', '.hero p', '.collection-top', '.toolbar'],
+    [
+      '.eyebrow',
+      '.hero h1 span',
+      '.hero h1 em',
+      '.hero p',
+      '.stats',
+      '.collection-top',
+      '.toolbar',
+    ],
     {
       y: 13,
       opacity: 0,
