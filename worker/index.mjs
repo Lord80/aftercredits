@@ -65,7 +65,7 @@ export default {
     try {
       const upstream = await fetch(target, {
         headers: { Authorization: 'Bearer ' + env.TMDB_READ_TOKEN, Accept: 'application/json' },
-        redirect: 'error',
+        redirect: 'manual',
         signal: AbortSignal.timeout(7000),
       });
       if (!upstream.ok) {
