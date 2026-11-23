@@ -1,9 +1,9 @@
-const dateLabel = new Intl.DateTimeFormat(undefined, {
+import { imageUrl } from './catalog.js';
+export const dateLabel = new Intl.DateTimeFormat(undefined, {
   year: 'numeric',
   month: 'short',
   day: 'numeric',
 });
-
 export function icon(name) {
   const ns = 'http://www.w3.org/2000/svg';
   const svg = document.createElementNS(ns, 'svg');
@@ -14,55 +14,102 @@ export function icon(name) {
   svg.append(use);
   return svg;
 }
-
+function el(tag, cls, text) {
+  const node = document.createElement(tag);
+  if (cls) node.className = cls;
+  if (text) node.textContent = text;
+  return node;
+}
+export function artwork(path, size, type) {
+  const frame = el('div', 'artwork');
+  frame.append(icon(type === 'tv' ? 'tv' : 'film'));
+  const src = imageUrl(path, size);
+  if (src) {
+    const img = new Image();
+    img.alt = '';
+    img.loading = 'lazy';
+    img.decoding = 'async';
+    img.addEventListener('error', () => img.remove(), { once: true });
+    img.src = src;
+    frame.append(img);
+  }
+  return frame;
+}
 function actionButton(action, title) {
-  const button = document.createElement('button');
-  button.className = 'icon-button';
+  const button = el('button', 'icon-button');
   button.dataset.action = action;
-  const description = (action === 'edit' ? 'Edit ' : 'Delete ') + title;
-  button.setAttribute('aria-label', description);
-  button.title = description;
+  button.setAttribute('aria-label', (action === 'edit' ? 'Edit ' : 'Delete ') + title);
   button.append(icon(action === 'edit' ? 'edit' : 'trash'));
   return button;
 }
-
-export function movieRow(movie, index) {
-  const row = document.createElement('li');
-  row.className = 'movie';
-  row.dataset.film = movie.id;
-  const number = document.createElement('span');
-  number.className = 'number';
-  number.setAttribute('aria-hidden', 'true');
-  number.textContent = String(index + 1).padStart(2, '0');
-  const title = document.createElement('h3');
-  title.textContent = movie.title;
-  const time = document.createElement('time');
+export function movieRow(movie) {
+  const card = el('li', 'poster-card');
+  card.dataset.film = movie.id;
+  const open = el('button', 'open-card');
+  open.dataset.action = 'details';
+  const poster = artwork(movie.metadata?.posterPath, 'w342', movie.mediaType);
+  const badge = el('span', 'score-badge');
+  badge.append(icon('star'), movie.rating.toFixed(1));
+  poster.append(badge);
+  const title = el('h3', '', movie.title);
+  const year =
+    typeof movie.metadata?.releaseDate === 'string' ? movie.metadata.releaseDate.slice(0, 4) : '';
+  const caption = el(
+    'span',
+    'poster-caption',
+    [year, movie.mediaType === 'tv' ? 'TV series' : 'Movie'].filter(Boolean).join(' · ')
+  );
+  open.append(el('span', 'sr-only', 'View title details'), poster, caption, title);
+  const bottom = el('div', 'card-bottom');
+  const time = el('time', '', dateLabel.format(new Date(movie.added)));
   time.dateTime = movie.added;
-  const added = dateLabel.format(new Date(movie.added));
-  time.textContent = added;
-  time.setAttribute('aria-label', 'Added ' + added);
-  const rating = document.createElement('span');
-  rating.className = 'rating';
-  rating.append(icon('star'), movie.rating.toFixed(1));
-  rating.setAttribute('aria-label', 'Rated ' + movie.rating + ' out of 10');
-  const actions = document.createElement('div');
-  actions.className = 'actions';
+  const date = el('div', 'added-date');
+  date.append('Added ', time);
+  const actions = el('div', 'actions');
   actions.append(actionButton('edit', movie.title), actionButton('delete', movie.title));
-  row.append(number, title, time, rating, actions);
-  return row;
+  bottom.append(date, actions);
+  card.append(open, bottom);
+  return card;
 }
-
-export function emptyState(searching) {
-  const panel = document.createElement('div');
+export function resultButton(item) {
+  const button = el('button', 'match');
+  button.type = 'button';
+  const text = el('span', 'match-info');
+  const date = item.metadata.releaseDate?.slice(0, 4) || 'Year unavailable';
+  text.append(
+    el('strong', '', item.metadata.title),
+    el('small', '', date + ' · ' + (item.mediaType === 'tv' ? 'TV series' : 'Movie'))
+  );
+  button.append(artwork(item.metadata.posterPath, 'w92', item.mediaType), text);
+  return button;
+}
+export function emptyState(searching, type) {
+  const panel = el('div', searching ? 'no-match' : 'empty');
+  const movie = type === 'movie';
+  const content = el('div', 'empty-text');
+  const heading = searching
+    ? 'No matching titles.'
+    : movie
+      ? 'Your first movie awaits.'
+      : 'Your first series awaits.';
+  const copy = searching
+    ? 'Try a different title or clear your search.'
+    : movie
+      ? 'Save a movie and give it a rating to begin your collection.'
+      : 'Add a show you’ve watched and give it your own rating.';
+  content.append(el('h3', '', heading), el('p', '', copy));
+  const button = el('button', 'button ' + (searching ? 'secondary' : 'empty-button'));
   if (searching) {
-    panel.className = 'no-match';
-    panel.innerHTML =
-      '<h3>No matching films.</h3><p>Try another title or clear your search.</p><button class="button secondary" data-clear>Clear search</button>';
+    button.dataset.clear = '';
+    button.textContent = 'Clear search';
   } else {
-    panel.className = 'empty';
-    panel.innerHTML =
-      '<div class="empty-art" aria-hidden="true"></div><div class="empty-text"><h3>Your first frame awaits.</h3><p>Add your first movie to begin your personal film archive.</p><button class="button empty-button" data-add>Add your first movie</button></div>';
-    panel.querySelector('button').prepend(icon('plus'));
+    const art = el('div', 'empty-art');
+    art.setAttribute('aria-hidden', 'true');
+    panel.append(art);
+    button.dataset.add = '';
+    button.append(icon('plus'), movie ? 'Add a movie' : 'Add a series');
   }
+  content.append(button);
+  panel.append(content);
   return panel;
 }

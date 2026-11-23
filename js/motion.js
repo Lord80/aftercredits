@@ -21,7 +21,7 @@ export function positions(list) {
   return new Map(
     [...list.querySelectorAll('[data-film]')].map((row) => [
       row.dataset.film,
-      row.getBoundingClientRect().top,
+      row.getBoundingClientRect(),
     ])
   );
 }
@@ -30,11 +30,13 @@ export function reveal(list, previous) {
   if (!animate()) return;
   let entered = 0;
   for (const row of list.children) {
-    const top = previous.get(row.dataset.film);
-    if (top !== undefined) {
-      const y = top - row.getBoundingClientRect().top;
-      if (Math.abs(y) > 1)
-        gsap.from(row, { y, duration: 0.32, ease: 'power3.out', clearProps: 'transform' });
+    const prior = previous.get(row.dataset.film);
+    if (prior) {
+      const current = row.getBoundingClientRect();
+      const x = prior.left - current.left,
+        y = prior.top - current.top;
+      if (Math.abs(y) > 1 || Math.abs(x) > 1)
+        gsap.from(row, { x, y, duration: 0.32, ease: 'power3.out', clearProps: 'transform' });
     } else {
       gsap.from(row, {
         y: 8,
