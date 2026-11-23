@@ -3,12 +3,12 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="theme-color" content="#11120f" />
+    <meta name="theme-color" content="#0e1020" />
     <meta
       name="description"
-      content="AFTERCREDITS is your personal cinema collection. Keep the films you watch and the ratings you give them in a private archive in your browser."
+      content="A private watch journal for movies and TV series, from the opening scene to the last frame."
     />
-    <title>AFTERCREDITS — Personal Cinema Collection</title>
+    <title>AFTERCREDITS — Twilight Watch Journal</title>
     <link rel="icon" href="./assets/reel.svg" type="image/svg+xml" />
     <link
       rel="preload"
@@ -17,7 +17,7 @@
       type="font/woff2"
       crossorigin
     />
-    <link rel="preload" href="./assets/images/projection.webp" as="image" />
+    <link rel="preload" href="./assets/images/twilight.webp" as="image" />
     <link rel="stylesheet" href="./css/site.css" />
     <script defer src="./assets/vendor/gsap.min.js"></script>
     <script type="module" src="./js/app.js"></script>
@@ -25,11 +25,18 @@
   <body>
     <svg class="symbols" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
       <symbol id="reel" viewBox="0 0 32 32">
+        <path d="m16 3 2.3 8.2 8 2.5-8 2.4L16 24l-2.3-7.9-7.8-2.4 7.8-2.5Z" fill="currentColor" />
         <path
-          fill="currentColor"
-          fill-rule="evenodd"
-          d="M16 2a13.5 13.5 0 1 0 0 27h13v-2.4h-5A13.5 13.5 0 0 0 16 2Zm0 3.5a3.2 3.2 0 1 1 0 6.4 3.2 3.2 0 0 1 0-6.4Zm-7.1 5.1a3.2 3.2 0 1 1 0 6.4 3.2 3.2 0 0 1 0-6.4Zm14.2 0a3.2 3.2 0 1 1 0 6.4 3.2 3.2 0 0 1 0-6.4ZM11.6 19a3.2 3.2 0 1 1 0 6.4 3.2 3.2 0 0 1 0-6.4Zm8.8 0a3.2 3.2 0 1 1 0 6.4 3.2 3.2 0 0 1 0-6.4ZM16 14a1.5 1.5 0 1 1 0 3 1.5 1.5 0 0 1 0-3Z"
+          d="M3.4 23.7c2.1 2.5 11.2-.5 18.4-5.1 6.9-4.4 9.4-8.7 7.5-10.1-1.1-.9-3.5-.8-5.8-.3M3.4 23.7c-1.1-1.4.1-4 2.9-6.6"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.4"
+          stroke-linecap="round"
         />
+      </symbol>
+      <symbol id="tv" viewBox="0 0 24 24">
+        <rect x="2" y="4" width="20" height="14" rx="2" />
+        <path d="M8 21h8m-4-3v3" />
       </symbol>
       <symbol id="plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14" /></symbol>
       <symbol id="minus" viewBox="0 0 24 24"><path d="M5 12h14" /></symbol>
@@ -64,9 +71,9 @@
           ><svg aria-hidden="true"><use href="#reel" /></svg>AFTERCREDITS</a
         >
         <nav aria-label="Main navigation">
-          <a class="nav-link" href="#collection">Collection</a>
+          <a class="nav-link" href="#collection">My collection</a>
           <button class="button primary" data-add>
-            <svg class="icon"><use href="#plus" /></svg>Add movie
+            <svg class="icon"><use href="#plus" /></svg>Add a title
           </button>
         </nav>
       </div>
@@ -74,25 +81,23 @@
     <main>
       <section class="hero" aria-labelledby="headline">
         <div class="hero-art"></div>
+        <div class="sky-lights" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
+        <div class="meteor" aria-hidden="true"></div>
         <div class="wrap hero-inner">
-          <div class="eyebrow"><span></span>Personal cinema journal</div>
-          <h1 id="headline"><span>Cinema,</span> <em>collected.</em></h1>
-          <p>
-            The films you’ve watched. The ratings you’ve given.<br />A collection that’s entirely
-            yours.
-          </p>
+          <div class="eyebrow"><span></span>Personal watch journal</div>
+          <h1 id="headline"><span>After the</span> <em>last frame.</em></h1>
+          <p>A place for the movies and series that stay with you.</p>
         </div>
-        <div class="perforations" aria-hidden="true"></div>
       </section>
       <section class="wrap collection" id="collection" aria-labelledby="collection-title">
         <div class="collection-top">
-          <h2 id="collection-title">Your collection<span>.</span></h2>
+          <h2 id="collection-title">My collection</h2>
           <div class="stats" aria-label="Collection overview">
             <div class="stat">
               <div>
                 <svg class="icon"><use href="#film" /></svg><strong id="total">00</strong>
               </div>
-              <span>Films watched</span>
+              <span>Titles watched</span>
             </div>
             <div class="stat">
               <div>
@@ -104,18 +109,26 @@
         </div>
         <p class="notice" id="storage-note" role="status" hidden></p>
         <div class="toolbar">
+          <div class="section-tabs" role="group" aria-label="Collection section">
+            <button type="button" data-section="movie" aria-pressed="true">
+              <svg class="icon"><use href="#film" /></svg>Movies <span id="movie-count">0</span>
+            </button>
+            <button type="button" data-section="tv" aria-pressed="false">
+              <svg class="icon"><use href="#tv" /></svg>TV Series <span id="tv-count">0</span>
+            </button>
+          </div>
           <label class="search"
             ><svg class="icon"><use href="#search" /></svg
             ><input
               type="search"
               id="query"
               aria-label="Search collection by title"
-              placeholder="Search your collection…"
+              placeholder="Search collection…"
               maxlength="300"
           /></label>
           <label class="sort"
             ><svg class="icon"><use href="#sort" /></svg
-            ><select id="order" aria-label="Sort movies">
+            ><select id="order" aria-label="Sort titles">
               <option value="recent">Recently added</option>
               <option value="highest">Highest rating</option>
               <option value="lowest">Lowest rating</option>
@@ -131,27 +144,63 @@
       <div>
         <svg><use href="#reel" /></svg>AFTERCREDITS
       </div>
-      <span>Personal cinema journal</span>
+      <div class="attribution">
+        <a href="https://www.themoviedb.org/" aria-label="The Movie Database"
+          ><img src="./assets/tmdb.svg" alt="TMDB" width="47" height="27"
+        /></a>
+        <p>This product uses the TMDB API but is not endorsed or certified by TMDB.</p>
+      </div>
     </footer>
     <dialog id="editor" aria-labelledby="editor-heading">
       <form id="movie-form" class="sheet" novalidate>
         <div class="sheet-head">
           <svg class="icon sheet-symbol"><use href="#film" /></svg
-          ><button class="icon-button" type="button" data-dismiss aria-label="Close movie form">
+          ><button class="icon-button" type="button" data-dismiss aria-label="Close entry form">
             <svg class="icon"><use href="#x" /></svg>
           </button>
         </div>
-        <h2 id="editor-heading">Add a movie</h2>
-        <label class="field-label" for="title">Movie title</label>
-        <input
-          id="title"
-          name="title"
-          class="text-field"
-          required
-          autocomplete="off"
-          placeholder="Enter the film’s title"
-          aria-describedby="form-error"
-        />
+        <h2 id="editor-heading">Add a title</h2>
+        <div id="add-options">
+          <label class="field-label" for="add-type">Collection</label>
+          <select class="text-field" id="add-type">
+            <option value="movie">Movies</option>
+            <option value="tv">TV Series</option>
+          </select>
+          <div class="mode-switch" role="group" aria-label="Entry method">
+            <button type="button" id="lookup-mode">Search TMDB</button>
+            <button type="button" id="manual-mode">Enter manually</button>
+          </div>
+          <p id="connection-note" class="help" hidden>
+            TMDB search hasn’t been connected. You can save a title manually.
+          </p>
+        </div>
+        <div id="catalog-panel" hidden>
+          <label class="field-label" for="catalog-query">Find an exact title</label>
+          <input
+            id="catalog-query"
+            class="text-field"
+            type="search"
+            maxlength="160"
+            autocomplete="off"
+            placeholder="Search TMDB by title…"
+          />
+          <p id="catalog-status" class="help" role="status"></p>
+          <button type="button" class="text-button" id="retry" hidden>Try search again</button>
+          <div id="matches"></div>
+          <div id="picked" hidden></div>
+        </div>
+        <div id="manual-panel">
+          <label class="field-label" for="title">Title</label>
+          <input
+            id="title"
+            name="title"
+            class="text-field"
+            required
+            autocomplete="off"
+            placeholder="Enter a title"
+            aria-describedby="form-error"
+          />
+        </div>
         <div class="rating-top">
           <label class="field-label" for="rating">Your rating</label>
           <div class="rating-read">
@@ -179,7 +228,7 @@
         <p class="error" id="form-error" role="alert"></p>
         <div class="sheet-actions">
           <button class="button secondary" type="button" data-dismiss>Cancel</button
-          ><button class="button primary" id="save" type="submit">Add movie</button>
+          ><button class="button primary" id="save" type="submit">Add a title</button>
         </div>
       </form>
     </dialog>
@@ -191,17 +240,30 @@
             <svg class="icon"><use href="#x" /></svg>
           </button>
         </div>
-        <h2 id="delete-heading">Remove this film?</h2>
+        <h2 id="delete-heading">Remove this title?</h2>
         <p id="delete-copy"></p>
         <div class="sheet-actions">
-          <button type="button" class="button secondary" id="keep" data-dismiss>Keep movie</button
-          ><button type="submit" class="button danger">Delete movie</button>
+          <button type="button" class="button secondary" id="keep" data-dismiss>Keep title</button
+          ><button type="submit" class="button danger">Delete title</button>
         </div>
       </form>
     </dialog>
+    <dialog id="detail-dialog" aria-labelledby="detail-title">
+      <div class="detail-hero"></div>
+      <article class="sheet">
+        <div class="sheet-head">
+          <span class="field-label" id="detail-type"></span
+          ><button type="button" data-dismiss class="icon-button" aria-label="Close title details">
+            <svg class="icon"><use href="#x" /></svg>
+          </button>
+        </div>
+        <h2 id="detail-title"></h2>
+        <p id="detail-facts"></p>
+        <p id="detail-description"></p>
+        <p id="detail-personal"></p>
+      </article>
+    </dialog>
     <div id="toast" role="status"></div>
-    <noscript
-      ><p class="wrap">Enable JavaScript to add and manage your movie collection.</p></noscript
-    >
+    <noscript><p class="wrap">Enable JavaScript to add and manage your watch journal.</p></noscript>
   </body>
 </html>

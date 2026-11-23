@@ -1,43 +1,63 @@
 # AFTERCREDITS
 
-A personal cinema journal for the films you’ve watched. Add a title and a rating from 1 to 10 in half-point steps. Search the archive, sort it by date, title, or rating, and revisit your entries to edit or remove them. The overview shows the total film count and the average rating across your entire collection.
+A personal watch journal for movies and TV series. The static frontend runs on GitHub Pages. A small Cloudflare Worker handles optional TMDB catalog requests. Collection data stays in the browser.
 
-## Publish with GitHub Pages in Chrome
+## What works
 
-1. Merge the website branch into `main` on GitHub.
-2. Open the repository’s **Settings → Pages**.
-3. Under **Build and deployment**, select **Deploy from a branch**.
-4. Choose **main** and **/ (root)**, then click **Save**.
-5. When the Pages deployment finishes, use **Visit site** in Pages settings. For the standard repository domain, the address is `https://lord80.github.io/aftercredits/`.
+| Capability | Availability |
+| --- | --- |
+| Separate Movies and TV Series collections, manual entry, half-point ratings, editing, confirmed deletion, search, four sort orders, totals and average rating | Available on first visit |
+| Migration from the original film journal, persistent personal ratings, cached title details, cross-tab updates | Available without an API connection |
+| Live catalog search, exact-title selection, official posters, and richer detail views | Connect the included Worker to TMDB as described below |
+| Filtering by genre, year, language, and rating | Planned. The data model already retains the relevant fields. |
 
-Subsequent changes merged into `main` deploy through the same configuration. All scripts, fonts, and images use repository-relative paths. The site needs no build step, credentials, environment variables, or external services.
+Choose **Movies** or **TV Series**, then **Add a title**. With the catalog connected, search by title, choose the correct poster and year, set your rating, and save. Anime films and series use the same two TMDB catalogs and can be searched by their original or translated names. **Enter manually** also works without TMDB. Open a saved card for its description, genres, release or first-air date, language, backdrop, and personal rating when available. The collection totals cover both sections.
 
-## Preview in a development workspace
+## Publish the frontend in Chrome
 
-From the repository root, run:
+1. Merge the website branch into `main`.
+2. In the GitHub repository, open **Settings → Pages**, choose **Deploy from a branch**, and select **main → / (root)**.
+3. Save and wait for the Pages deployment. Open **Visit site** from the Pages settings. The standard repository address is `https://lord80.github.io/aftercredits/`.
 
-```sh
-python3 -m http.server 8000 --bind 0.0.0.0
-```
+No frontend build or dependency installation is needed. For a development preview, run `python3 -m http.server 8000 --bind 0.0.0.0` from the repository root and open port 8000. Use the same origin and browser profile as your earlier journal to migrate it.
 
-Open port 8000 with your workspace’s HTTP preview. Use an HTTP server so the browser can load the ES modules.
+## Connect live TMDB search from a browser
 
-## Your collection
+1. Sign in to TMDB and register for API access in **Account Settings → API**. Copy your **API Read Access Token** for Bearer authentication. Review the API terms for your intended use. [TMDB API settings](https://www.themoviedb.org/settings/api)
+2. In the Cloudflare dashboard, open **Workers & Pages**, create a Worker such as `aftercredits-catalog`, and deploy the starter. Open its code editor, replace the starter module with the entire contents of [worker/index.mjs](worker/index.mjs), and deploy the update. It uses the Worker runtime’s built-in Web APIs.
+3. In the Worker’s **Settings → Variables and Secrets**, add **TMDB_READ_TOKEN** as a **Secret** with the TMDB read token. Add **ALLOWED_ORIGINS** as a text variable containing the frontend origin, e.g. `https://lord80.github.io`. Use a comma-separated list for additional origins. Include the scheme and any port. Omit repository paths and trailing slashes. Save and deploy the bindings. For a CLI deployment, the same Worker entry point and production origin are declared in [worker/wrangler.toml](worker/wrangler.toml).
+4. Copy the deployed Worker’s public HTTPS **origin**. In GitHub, edit [js/config.js](js/config.js) and set `catalogOrigin` to that origin. For example, if your Worker address ends in `.workers.dev`, paste that complete HTTPS origin between the quotes. This field contains only a public address. The TMDB credential belongs exclusively in the Worker Secret.
+5. Commit the public URL through your usual review flow. After Pages redeploys, open **Add a title → Search TMDB**. Verify a known movie and a TV series, confirm the year and poster, save one, and reload. The Worker’s bare URL expects a catalog route and an allowed browser origin.
 
-The first visit opens an empty journal. Your browser stores titles, ratings, and dates added in LocalStorage under `aftercredits.collection.v1`. Reloading the page or reopening the site in the same browser profile restores your films. Other tabs on the same origin receive updates automatically.
+The Worker accepts GET requests to `/search?type=movie&q=…` and `/details?type=tv&id=…` for the two supported media types. It constructs requests to fixed TMDB endpoints, validates input, applies a timeout, and returns selected metadata fields. It sends the Bearer token only to TMDB. Official images load from `image.tmdb.org`. The origin allowlist controls browser access. A public endpoint still consumes the owner’s TMDB quota, and requests can be throttled. The UI reports rate limits and supports retry or manual entry.
 
-Each browser profile and site origin has its own storage. Private browsing may discard the archive when the session ends. Clearing site data removes it. If storage is blocked or full, a notice appears and the current tab keeps working in memory. When reading damaged storage, the app retains valid records and explains any recovery in the interface.
+## Data, migration, and offline behavior
 
-Title comparisons normalize Unicode, case, and repeated whitespace. Editing a movie preserves its original date. Delete requires confirmation. Native dialogs, labeled controls, visible focus, keyboard-operable ratings, and reduced-motion support are included.
+The current LocalStorage key is `aftercredits.collection.v2`. Its envelope contains `version: 2` and an `entries` array.
 
-## Source
+| Entry field | Purpose |
+| --- | --- |
+| `id` | Stable local identity for edits and deletes |
+| `mediaType`, `tmdbId` | Movie or TV identity. The TMDB ID is null for manual and legacy entries. |
+| `title`, `rating`, `added` | Personal display title, half-point rating, and original timestamp |
+| `metadata` | A snapshot of the catalog title, original title, release or first-air date, genre IDs and available names, original language, overview, and poster/backdrop paths. Manual entries have null metadata. |
 
-- `index.html` contains the semantic page and native dialogs.
-- `css/site.css` defines the editorial layout, responsive styles, typography, and micro-interactions.
-- `js/collection.js` handles validation, persistence, search, and sorting.
-- `js/views.js` builds movie rows and empty states.
-- `js/app.js` connects input, forms, and collection updates.
-- `js/motion.js` handles entrances, list transitions, dialogs, and statistics.
-- `assets/` holds the original projector and celluloid illustrations, self-hosted fonts and their licenses, the reel favicon, and GSAP 3.15.1.
+On first use with an existing v1 archive, the app writes a v2 copy. Original IDs, titles, timestamps, and ratings carry over into Movies. The original v1 value remains available as a backup. Subsequent visits use v2, including after you delete the last entry. If the stored data is damaged or uses an unsupported version, the app protects the stored bytes and lets you work with readable entries in memory for the current session.
 
-The typefaces are Instrument Serif, DM Sans, and IBM Plex Mono. GSAP is distributed under the [GSAP Standard License](https://gsap.com/standard-license/).
+The combination of media type and TMDB ID identifies a catalog entry. Remakes can share a title, and a film and a series can share a numeric ID. Manual entries use normalized, case-insensitive title comparison within their section. Editing the personal display title preserves the original metadata snapshot and added date.
+
+Browsing, searching, editing, rating, and deleting saved entries work when TMDB is offline. If the details request fails after a successful catalog search, you can save the returned search record. Artwork falls back to a media-type illustration when the image is missing or unreachable. The app stores artwork paths, so viewing uncached images requires a connection. Browser profiles and origins have separate journals. Clearing site data removes the archive. Blocked or full storage switches the current tab to memory with a visible notice.
+
+## Implementation and verification
+
+- `js/collection.js` owns versioning, migration, validation, identity, and sorting.
+- `js/catalog.js` calls the proxy and builds allowlisted image URLs. `js/picker.js` manages debouncing, cancellation, selection, and partial detail recovery.
+- `js/app.js`, `js/views.js`, and `js/motion.js` connect the UI, poster cards, dialogs, and reduced-motion-aware transitions.
+- `worker/index.mjs` implements the proxy and maps TMDB’s movie and TV fields into a common shape.
+- Run `node --test tests/*.test.mjs` with Node 22.7 or newer for the storage and Worker contract tests. Test fixtures are isolated from the application and require no credential.
+
+Browser validation covered migration, CRUD in both sections, reload and full browser restart, cross-tab updates, failed artwork, unavailable storage, keyboard dialogs, and layouts from 320 to 1440 pixels. The search and details flow was tested through the Worker with an isolated upstream test fixture. Wrangler packaged the Worker successfully. Live TMDB verification requires the deployment and secret described above.
+
+The twilight landscape and ticket illustration are original artwork created for AFTERCREDITS. The site self-hosts Instrument Serif, DM Sans, IBM Plex Mono, and GSAP. Font licenses are in `assets/fonts`. [GSAP license](https://gsap.com/standard-license/)
+
+This product uses the TMDB API but is not endorsed or certified by TMDB. Catalog artwork and metadata are supplied by TMDB and the respective rights holders. The interface includes the TMDB mark and attribution in its footer. [TMDB](https://www.themoviedb.org/)

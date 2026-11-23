@@ -1,4 +1,11 @@
-import { changeMovie, selectMovies, snapshot, STORAGE_KEY } from './collection.js';
+import {
+  changeMovie,
+  selectMovies,
+  snapshot,
+  STORAGE_KEY,
+  initialize,
+  LEGACY_KEY,
+} from './collection.js';
 import {
   entrance,
   hideDialog,
@@ -8,7 +15,9 @@ import {
   showDialog,
   statistic,
 } from './motion.js';
-import { emptyState, icon, movieRow } from './views.js';
+import { startPicker, stopPicker, focusPicker, selection } from './picker.js';
+import { imageUrl } from './catalog.js';
+import { emptyState, icon, movieRow, dateLabel } from './views.js';
 
 const byId = (id) => document.getElementById(id);
 const results = byId('results');
@@ -20,6 +29,7 @@ const title = byId('title');
 const rating = byId('rating');
 const formError = byId('form-error');
 let movies = [];
+let section = 'movie';
 let subject = null;
 let opener = null;
 let busy = false;
@@ -36,13 +46,22 @@ function refresh() {
     ? movies.reduce((sum, film) => sum + film.rating, 0) / movies.length
     : null;
   statistic(byId('average'), mean, (n) => (n === null ? '—' : n.toFixed(1)));
+  byId('movie-count').textContent = movies.filter((m) => m.mediaType === 'movie').length;
+  byId('tv-count').textContent = movies.filter((m) => m.mediaType === 'tv').length;
   render();
 }
 
 function render() {
   cancelAnimationFrame(renderFrame);
   const previous = positions(results);
-  const selected = selectMovies(movies, query.value, order.value);
+  document.body.dataset.currentSection = section;
+  const group = movies.filter((m) => m.mediaType === section);
+  document
+    .querySelectorAll('[data-section]')
+    .forEach((button) =>
+      button.setAttribute('aria-pressed', String(button.dataset.section === section))
+    );
+  const selected = selectMovies(group, query.value, order.value);
   if (selected.length) {
     const list = document.createElement('ol');
     list.className = 'movie-list';
@@ -50,18 +69,12 @@ function render() {
     results.replaceChildren(list);
     reveal(list, previous);
   } else {
-    const searching = movies.length > 0;
-    const sameState = results.firstElementChild?.classList.contains(
-      searching ? 'no-match' : 'empty'
-    );
-    if (!sameState) {
-      results.replaceChildren(emptyState(searching));
-      reveal(results, previous);
-    }
+    results.replaceChildren(emptyState(group.length > 0, section));
+    reveal(results, previous);
   }
   byId('result-status').textContent =
     selected.length +
-    (selected.length === 1 ? ' film' : ' films') +
+    (selected.length === 1 ? ' title' : ' titles') +
     (query.value ? ' matching your search.' : ' in your collection.');
 }
 
@@ -77,24 +90,65 @@ function highlightRating() {
 function openPanel(action, film, button) {
   subject = film?.id ?? null;
   opener = button;
+  if (action === 'details') {
+    const m = film.metadata;
+    const dialog = byId('detail-dialog'),
+      banner = dialog.querySelector('.detail-hero');
+    banner.replaceChildren();
+    banner.hidden = true;
+    const src = imageUrl(m?.backdropPath, 'w780');
+    if (src) {
+      const image = new Image();
+      image.alt = '';
+      image.onload = () => {
+        if (banner.contains(image)) banner.hidden = false;
+      };
+      image.onerror = () => image.remove();
+      banner.append(image);
+      image.src = src;
+    }
+    byId('detail-title').textContent = film.title;
+    byId('detail-type').textContent = film.mediaType === 'tv' ? 'TV series' : 'Movie';
+    const facts = [
+      m?.releaseDate,
+      ...(Array.isArray(m?.genres) ? m.genres.map((g) => g?.name) : []),
+      typeof m?.originalLanguage === 'string' ? m.originalLanguage.toUpperCase() : null,
+    ].filter(Boolean);
+    byId('detail-facts').textContent = facts.join('  ·  ');
+    byId('detail-description').textContent =
+      m?.overview ||
+      (film.tmdbId
+        ? 'A description is unavailable for this title.'
+        : 'This title was saved manually.');
+    byId('detail-personal').textContent =
+      'Your rating ' +
+      film.rating.toFixed(1) +
+      ' / 10  ·  Added ' +
+      dateLabel.format(new Date(film.added));
+    showDialog(dialog);
+    dialog.querySelector('button').focus();
+    return;
+  }
   if (action === 'delete') {
     byId('delete-copy').textContent = '“' + film.title + '” will be deleted from your collection.';
     showDialog(confirm);
     byId('keep').focus();
     return;
   }
-  byId('editor-heading').textContent = film ? 'Edit movie' : 'Add a movie';
-  byId('save').textContent = film ? 'Save changes' : 'Add movie';
+  byId('editor-heading').textContent = film ? 'Edit title' : 'Add a title';
+  byId('save').textContent = film ? 'Save changes' : 'Save title';
   title.value = film?.title || '';
   rating.value = film?.rating ?? 7;
   formError.textContent = '';
   title.removeAttribute('aria-invalid');
   highlightRating();
+  startPicker(film?.mediaType ?? section, Boolean(film));
   showDialog(editor);
-  title.focus();
+  focusPicker();
 }
 
 async function closePanel(dialog) {
+  if (dialog === editor) stopPicker();
   await hideDialog(dialog);
   if (opener?.isConnected) opener.focus({ preventScroll: true });
   else {
@@ -135,7 +189,9 @@ async function submit(event) {
   const deleting = dialog === confirm;
   const action = deleting ? 'delete' : subject ? 'edit' : 'add';
   try {
-    await changeMovie({ action, id: subject, title: title.value, rating: rating.valueAsNumber });
+    const picked = deleting ? {} : selection();
+    await changeMovie({ action, id: subject, ...picked, rating: rating.valueAsNumber });
+    if (!deleting) section = picked.mediaType;
     if (deleting) {
       removeFrame(
         [...results.querySelectorAll('[data-film]')].find((row) => row.dataset.film === subject)
@@ -146,7 +202,7 @@ async function submit(event) {
     refresh();
     await closePanel(dialog);
     feedback(
-      { add: 'Movie added to your collection.', edit: 'Movie updated.', delete: 'Movie removed.' }[
+      { add: 'Title added to your collection.', edit: 'Title updated.', delete: 'Title removed.' }[
         action
       ]
     );
@@ -154,7 +210,7 @@ async function submit(event) {
     if (!deleting) {
       formError.textContent = error.message;
       title.setAttribute('aria-invalid', 'true');
-      title.focus();
+      focusPicker();
     } else {
       await closePanel(dialog);
       refresh();
@@ -168,6 +224,11 @@ async function submit(event) {
 document.addEventListener('click', (event) => {
   const button = event.target.closest('button');
   if (!button || busy) return;
+  if (button.dataset.section) {
+    section = button.dataset.section;
+    query.value = '';
+    render();
+  }
   if (button.hasAttribute('data-add')) openPanel('add', null, button);
   if (button.hasAttribute('data-dismiss')) dismiss(button.closest('dialog'));
   if (button.hasAttribute('data-clear')) {
@@ -181,7 +242,7 @@ document.addEventListener('click', (event) => {
   }
 });
 
-for (const dialog of [editor, confirm]) {
+for (const dialog of [editor, confirm, byId('detail-dialog')]) {
   dialog.addEventListener('cancel', (event) => {
     event.preventDefault();
     dismiss(dialog);
@@ -211,8 +272,9 @@ query.addEventListener('input', () => {
 });
 order.addEventListener('change', render);
 window.addEventListener('storage', (event) => {
-  if (event.key === STORAGE_KEY || event.key === null) refresh();
+  if (event.key === STORAGE_KEY || event.key === LEGACY_KEY || event.key === null) refresh();
 });
 
+await initialize();
 refresh();
 entrance();

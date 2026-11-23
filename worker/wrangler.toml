@@ -1,0 +1,5 @@
+name = "aftercredits-catalog"
+main = "index.mjs"
+compatibility_date = "2025-09-01"
+[vars]
+ALLOWED_ORIGINS = "https://lord80.github.io"
