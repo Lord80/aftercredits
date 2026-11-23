@@ -21,6 +21,7 @@ function resetResults() {
   get('picked').replaceChildren();
   get('picked').hidden = true;
   get('retry').hidden = true;
+  delete status.dataset.loading;
   status.textContent = '';
   get('save').disabled = mode === 'lookup';
 }
@@ -40,6 +41,7 @@ function schedule() {
   resetResults();
   const term = query.value.trim();
   if (!term) return;
+  status.dataset.loading = 'true';
   status.textContent = 'Searching TMDB…';
   controller = new AbortController();
   const signal = controller.signal;
@@ -61,6 +63,8 @@ function schedule() {
         ? error.message
         : 'Search is unavailable. Retry or enter your title manually.';
       get('retry').hidden = false;
+    } finally {
+      if (!signal.aborted) delete status.dataset.loading;
     }
   }, 300);
 }
@@ -80,6 +84,7 @@ async function choose(item) {
     query.focus();
   });
   panel.append(selected);
+  status.dataset.loading = 'true';
   status.textContent = 'Loading title details…';
   selected.focus();
   try {
@@ -92,6 +97,7 @@ async function choose(item) {
     picked = item;
     status.textContent = 'Full details are unavailable. You can save this TMDB search result.';
   }
+  delete status.dataset.loading;
   get('save').disabled = false;
 }
 get('lookup-mode').addEventListener('click', () => {

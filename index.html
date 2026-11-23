@@ -3,12 +3,12 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="theme-color" content="#0e1020" />
+    <meta name="theme-color" content="#eaf3fa" />
     <meta
       name="description"
       content="A private watch journal for movies and TV series, from the opening scene to the last frame."
     />
-    <title>AFTERCREDITS — Twilight Watch Journal</title>
+    <title>AFTERCREDITS — Personal Watch Journal</title>
     <link rel="icon" href="./assets/reel.svg" type="image/svg+xml" />
     <link
       rel="preload"
@@ -17,7 +17,7 @@
       type="font/woff2"
       crossorigin
     />
-    <link rel="preload" href="./assets/images/twilight.webp" as="image" />
+    <link rel="preload" href="./assets/images/morning-rail.webp" as="image" />
     <link rel="stylesheet" href="./css/site.css" />
     <script defer src="./assets/vendor/gsap.min.js"></script>
     <script type="module" src="./js/app.js"></script>
@@ -25,14 +25,19 @@
   <body>
     <svg class="symbols" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
       <symbol id="reel" viewBox="0 0 32 32">
-        <path d="m16 3 2.3 8.2 8 2.5-8 2.4L16 24l-2.3-7.9-7.8-2.4 7.8-2.5Z" fill="currentColor" />
-        <path
-          d="M3.4 23.7c2.1 2.5 11.2-.5 18.4-5.1 6.9-4.4 9.4-8.7 7.5-10.1-1.1-.9-3.5-.8-5.8-.3M3.4 23.7c-1.1-1.4.1-4 2.9-6.6"
+        <rect x="1" y="1" width="30" height="30" rx="9" fill="currentColor" />
+        <g
+          stroke="#fff"
           fill="none"
-          stroke="currentColor"
-          stroke-width="1.4"
+          stroke-width="1.7"
           stroke-linecap="round"
-        />
+          stroke-linejoin="round"
+        >
+          <path
+            d="m6.5 13.1 18.3-4.4-1-4.1-18.3 4.5zM9 8.3l3.4 3.2m2.4-4.6 3.4 3.2m2.1-4.6 3.4 3.2M7.2 14.7h18v9.1c0 1.2-1 2.2-2.2 2.2H9.4c-1.2 0-2.2-1-2.2-2.2z"
+          />
+          <path d="m14.5 18 4.3 2.5-4.3 2.4z" fill="#fff" stroke="none" />
+        </g>
       </symbol>
       <symbol id="tv" viewBox="0 0 24 24">
         <rect x="2" y="4" width="20" height="14" rx="2" />
@@ -79,19 +84,13 @@
       </div>
     </header>
     <main>
-      <section class="hero" aria-labelledby="headline">
+      <section class="wrap hero" aria-labelledby="headline">
         <div class="hero-art"></div>
-        <div class="sky-lights" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
-        <div class="meteor" aria-hidden="true"></div>
-        <div class="wrap hero-inner">
+        <div class="rain-light" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
+        <div class="hero-inner">
           <div class="eyebrow"><span></span>Personal watch journal</div>
           <h1 id="headline"><span>After the</span> <em>last frame.</em></h1>
           <p>A place for the movies and series that stay with you.</p>
-        </div>
-      </section>
-      <section class="wrap collection" id="collection" aria-labelledby="collection-title">
-        <div class="collection-top">
-          <h2 id="collection-title">My collection</h2>
           <div class="stats" aria-label="Collection overview">
             <div class="stat">
               <div>
@@ -107,8 +106,10 @@
             </div>
           </div>
         </div>
-        <p class="notice" id="storage-note" role="status" hidden></p>
-        <div class="toolbar">
+      </section>
+      <section class="wrap collection" id="collection" aria-labelledby="collection-title">
+        <div class="collection-top">
+          <h2 id="collection-title">My collection</h2>
           <div class="section-tabs" role="group" aria-label="Collection section">
             <button type="button" data-section="movie" aria-pressed="true">
               <svg class="icon"><use href="#film" /></svg>Movies <span id="movie-count">0</span>
@@ -117,6 +118,9 @@
               <svg class="icon"><use href="#tv" /></svg>TV Series <span id="tv-count">0</span>
             </button>
           </div>
+        </div>
+        <p class="notice" id="storage-note" role="status" hidden></p>
+        <div class="toolbar">
           <label class="search"
             ><svg class="icon"><use href="#search" /></svg
             ><input
