@@ -49,7 +49,7 @@ export function movieRow(movie) {
   open.dataset.action = 'details';
   const poster = artwork(movie.metadata?.posterPath, 'w342', movie.mediaType);
   const badge = el('span', 'score-badge');
-  badge.append(icon('star'), movie.rating.toFixed(1));
+  badge.append(el('span', 'sr-only', 'Your rating '), icon('star'), movie.rating.toFixed(1));
   poster.append(badge);
   const title = el('h3', '', movie.title);
   const year =
@@ -112,4 +112,74 @@ export function emptyState(searching, type) {
   content.append(button);
   panel.append(content);
   return panel;
+}
+
+const languageNames = Intl.DisplayNames && new Intl.DisplayNames(undefined, { type: 'language' });
+const releaseLabel = new Intl.DateTimeFormat(undefined, {
+  year: 'numeric',
+  month: 'long',
+  day: 'numeric',
+  timeZone: 'UTC',
+});
+
+export function presentDetails(dialog, entry) {
+  const meta = entry.metadata ?? {};
+  const get = (id) => dialog.querySelector('#' + id);
+  const series = entry.mediaType === 'tv';
+  const banner = dialog.querySelector('.detail-hero');
+  const backdrop = imageUrl(meta.backdropPath, 'w780');
+  banner.hidden = !backdrop;
+  banner.replaceChildren();
+  if (backdrop) {
+    const image = new Image();
+    image.alt = '';
+    image.decoding = 'async';
+    image.addEventListener('error', () => image.remove(), { once: true });
+    banner.append(image);
+    image.src = backdrop;
+  }
+  const poster = get('detail-poster');
+  poster.hidden = !imageUrl(meta.posterPath, 'w185');
+  poster.replaceChildren();
+  if (!poster.hidden) poster.append(artwork(meta.posterPath, 'w185', entry.mediaType));
+  get('detail-type').replaceChildren(icon(series ? 'tv' : 'film'), series ? 'TV series' : 'Movie');
+  get('detail-title').textContent = entry.title;
+  const original = get('detail-original');
+  original.hidden = !meta.originalTitle || meta.originalTitle === entry.title;
+  original.textContent = original.hidden ? '' : meta.originalTitle;
+  get('detail-description').textContent =
+    meta.overview ||
+    (entry.tmdbId
+      ? 'A description is unavailable for this title.'
+      : 'This title was saved manually.');
+
+  const facts = get('detail-facts');
+  facts.replaceChildren();
+  function fact(label, value) {
+    if (!value) return;
+    const group = el('div');
+    group.append(el('dt', '', label), el('dd', '', value));
+    facts.append(group);
+  }
+  if (typeof meta.releaseDate === 'string' && meta.releaseDate) {
+    const day = new Date(meta.releaseDate + 'T00:00:00Z');
+    fact(
+      series ? 'First aired' : 'Released',
+      Number.isFinite(+day) ? releaseLabel.format(day) : meta.releaseDate
+    );
+  }
+  if (Array.isArray(meta.genres))
+    fact(
+      'Genres',
+      meta.genres
+        .map((g) => g?.name)
+        .filter(Boolean)
+        .join(' · ')
+    );
+  if (typeof meta.originalLanguage === 'string' && /^[a-z]{2,3}$/i.test(meta.originalLanguage))
+    fact('Original language', languageNames?.of(meta.originalLanguage) ?? meta.originalLanguage);
+  facts.hidden = !facts.childElementCount;
+  get('detail-score').textContent = entry.rating.toFixed(1);
+  get('detail-added').dateTime = entry.added;
+  get('detail-added').textContent = 'Added ' + dateLabel.format(new Date(entry.added));
 }

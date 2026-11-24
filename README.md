@@ -58,6 +58,6 @@ Browsing, searching, editing, rating, and deleting saved entries work when TMDB 
 
 Browser validation covered migration, CRUD in both sections, reload and full browser restart, cross-tab updates, failed artwork, unavailable storage, keyboard dialogs, and layouts from 320 to 1440 pixels. The search and details flow was tested through the Worker with an isolated upstream test fixture. Wrangler packaged the Worker successfully. Live TMDB verification requires the deployment and secret described above.
 
-The rain-washed morning railway and spring ticket illustration are original artwork created for AFTERCREDITS. The site self-hosts Instrument Serif, DM Sans, IBM Plex Mono, and GSAP. Font licenses are in `assets/fonts`. [GSAP license](https://gsap.com/standard-license/)
+The lakeside morning panorama and spring ticket illustration are original artwork created for AFTERCREDITS. The site self-hosts Instrument Serif, DM Sans, IBM Plex Mono, and GSAP. Font licenses are in `assets/fonts`. [GSAP license](https://gsap.com/standard-license/)
 
 This product uses the TMDB API but is not endorsed or certified by TMDB. Catalog artwork and metadata are supplied by TMDB and the respective rights holders. The interface includes the TMDB mark and attribution in its footer. [TMDB](https://www.themoviedb.org/)
