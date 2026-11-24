@@ -16,9 +16,17 @@ import {
   showDialog,
   statistic,
 } from './motion.js';
-import { alignLens, startViewfinder } from './viewfinder.js';
+import { trackStrip } from './filmstrip.js';
+import {
+  arrangeStage,
+  cueFrame,
+  currentFrame,
+  forgetFrame,
+  latestFrame,
+  stepFrame,
+} from './stage.js';
 import { startPicker, stopPicker, focusPicker, selection } from './picker.js';
-import { emptyState, icon, movieRow, presentDetails, presentLatest } from './views.js';
+import { emptyState, icon, movieRow, presentDetails } from './views.js';
 
 const byId = (id) => document.getElementById(id);
 const results = byId('results');
@@ -30,8 +38,6 @@ const title = byId('title');
 const rating = byId('rating');
 const formError = byId('form-error');
 let movies = [];
-let latestByType;
-let displayedLatest;
 let section = 'movie';
 let subject = null;
 let opener = null;
@@ -43,12 +49,6 @@ let toastTimer;
 function refresh() {
   const state = snapshot();
   movies = state.items;
-  latestByType = { movie: null, tv: null };
-  for (const entry of movies) {
-    const prior = latestByType[entry.mediaType];
-    if (!prior || Date.parse(entry.added) > Date.parse(prior.added))
-      latestByType[entry.mediaType] = entry;
-  }
   byId('storage-note').textContent = state.notice;
   byId('storage-note').hidden = !state.notice;
   statistic(byId('total'), movies.length, (n) => String(Math.round(n)).padStart(2, '0'));
@@ -65,12 +65,6 @@ function render() {
   cancelAnimationFrame(renderFrame);
   const previous = positions(results);
   document.body.dataset.currentSection = section;
-  const latest = latestByType[section];
-  if (displayedLatest !== latest) {
-    presentLatest(byId('latest'), latest);
-    displayedLatest = latest;
-    if (!latest) alignLens();
-  }
   const group = movies.filter((m) => m.mediaType === section);
   document
     .querySelectorAll('[data-section]')
@@ -105,6 +99,8 @@ function render() {
       reveal(results, previous);
     }
   }
+  arrangeStage(selected, group, section);
+  trackStrip(results.querySelector('.movie-list'));
   byId('result-status').textContent =
     selected.length +
     (selected.length === 1 ? ' title' : ' titles') +
@@ -132,7 +128,6 @@ function openPanel(action, film, button) {
     button.setAttribute('aria-expanded', 'true');
     presentDetails(dialog, film);
     showDialog(dialog, button);
-    dialog.querySelector('.detail-scroll').scrollTop = 0;
     dialog.querySelector('.detail-close').focus({ preventScroll: true });
     return;
   }
@@ -159,7 +154,7 @@ async function closePanel(dialog, updateCollection) {
   const previousCard = opener?.closest('[data-film]');
   const neighborId = (previousCard?.nextElementSibling ?? previousCard?.previousElementSibling)
     ?.dataset.film;
-  await hideDialog(dialog);
+  await hideDialog(dialog, opener);
   if (dialog.id === 'detail-dialog') opener?.setAttribute('aria-expanded', 'false');
   updateCollection?.();
   let target = opener;
@@ -212,6 +207,7 @@ async function submit(event) {
       if (deleting) removeFrame(opener?.closest('[data-film]'));
       else {
         section = picked.mediaType;
+        if (action === 'add') forgetFrame(section);
         query.value = '';
       }
       refresh();
@@ -254,10 +250,16 @@ document.addEventListener('click', (event) => {
     render();
     query.focus();
   }
-  if (button.id === 'latest' && displayedLatest) openPanel('details', displayedLatest, button);
+  if (button.id === 'return-latest' && latestFrame()) openPanel('details', latestFrame(), button);
+  if (button.dataset.step) stepFrame(Number(button.dataset.step));
+  if ((button.id === 'latest' || button.id === 'stage-open') && currentFrame())
+    openPanel('details', currentFrame(), button);
   if (button.dataset.action) {
     const film = movies.find((item) => item.id === button.closest('[data-film]').dataset.film);
-    if (film) openPanel(button.dataset.action, film, button);
+    if (film) {
+      if (button.dataset.action === 'details') cueFrame(film.id);
+      openPanel(button.dataset.action, film, button);
+    }
   }
 });
 
@@ -294,7 +296,23 @@ window.addEventListener('storage', (event) => {
   if (event.key === STORAGE_KEY || event.key === LEGACY_KEY || event.key === null) refresh();
 });
 
-startViewfinder();
+results.addEventListener('focusin', (event) => {
+  const card = event.target.closest('.open-card');
+  if (card) cueFrame(card.closest('[data-film]').dataset.film);
+});
+results.addEventListener('keydown', (event) => {
+  const card = event.target.closest('.open-card')?.closest('[data-film]');
+  if (!card || !['ArrowLeft', 'ArrowRight'].includes(event.key)) return;
+  event.preventDefault();
+  const neighbor =
+    event.key === 'ArrowLeft' ? card.previousElementSibling : card.nextElementSibling;
+  neighbor?.querySelector('.open-card').focus({ preventScroll: true });
+});
+document.querySelector('.projector').addEventListener('keydown', (event) => {
+  if (!['ArrowLeft', 'ArrowRight'].includes(event.key)) return;
+  event.preventDefault();
+  stepFrame(event.key === 'ArrowLeft' ? -1 : 1);
+});
 await initialize();
 refresh();
 entrance();

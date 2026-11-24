@@ -2,7 +2,7 @@
 
 A personal watch journal for movies and TV series. The static frontend runs on GitHub Pages. A small Cloudflare Worker handles optional TMDB catalog requests. Collection data stays in the browser.
 
-The spatial glass walkthrough compares the journal before and after the redesign and shows the viewfinder, gallery, picker and title details at desktop and phone sizes. [Current interface](docs/phase-2c-1/) · [Phase 2C exhibition](docs/phase-2c/) · [Splice identity](docs/phase-2b/) · [Cinema street](docs/phase-2a/)
+The journal opens onto a screening room overlooking the cinema street. Browse mounted posters, jump to a title in the filmstrip, or open its full-window projection. The design walkthrough includes a short screen recording and desktop, tablet and phone captures. [Explore the screening room](docs/screening-room/) · [Earlier spatial design](docs/phase-2c-1/) · [Splice identity](docs/phase-2b/) · [Cinema street](docs/phase-2a/)
 
 ## What works
 
@@ -13,7 +13,7 @@ The spatial glass walkthrough compares the journal before and after the redesign
 | Live catalog search, exact-title selection, official posters, and richer detail views | Uses the public Worker configured in `js/config.js`. New deployments can follow the setup below. |
 | Filtering by genre, year, language, and rating | Planned. The data model already retains the relevant fields. |
 
-Choose **Movies** or **TV Series**, then **Add a title**. With the catalog connected, search by title, choose the correct poster and year, set your rating, and save. Anime films and series use the same two TMDB catalogs and can be searched by their original or translated names. **Enter manually** also works without TMDB. Open a saved card for its description, genres, release or first-air date, language, backdrop, and personal rating when available. The collection totals cover both sections.
+Choose **Movies** or **TV Series**, then **Add a title**. With the catalog connected, search by title, choose the correct poster and year, set your rating, and save. Anime films and series use the same two TMDB catalogs and can be searched by their original or translated names. **Enter manually** also works without TMDB. Use the side posters, arrow buttons or a horizontal swipe to browse. Select the center poster or a filmstrip title to see its description, genres, release or first-air date, language, backdrop, and personal rating when available. Each filmstrip entry has visible edit and remove controls. The collection totals cover both sections.
 
 ## Publish the frontend in Chrome
 
@@ -54,13 +54,14 @@ Browsing, searching, editing, rating, and deleting saved entries work when TMDB 
 
 - `js/collection.js` owns versioning, migration, validation, identity, and sorting.
 - `js/catalog.js` calls the proxy and builds allowlisted image URLs. `js/picker.js` manages debouncing, cancellation, selection, and partial detail recovery.
-- `js/app.js`, `js/views.js`, and `js/motion.js` connect the UI, poster cards, dialogs, and reduced-motion-aware transitions.
+- `js/stage.js` positions the three posters and handles stage navigation. `js/filmstrip.js` manages the archive’s native horizontal scrolling.
+- `js/app.js`, `js/views.js`, and `js/motion.js` connect the collection, picker, and title projection, including focus restoration and reduced-motion behavior.
 - `worker/index.mjs` implements the proxy and maps TMDB’s movie and TV fields into a common shape.
 - Run `node --test tests/*.test.mjs` with Node 22.7 or newer for the storage and Worker contract tests. Test fixtures are isolated from the application and require no credential.
-- With Python Playwright and Chromium installed, run `python3 tests/picker.browser.py` to exercise keyboard media selection, catalog retry, preview cleanup and rating persistence. The check starts a temporary local server and uses a fresh browser profile.
+- With Python Playwright and Chromium installed, run `python3 tests/picker.browser.py` to exercise keyboard media selection, catalog retry, preview cleanup, rating persistence, and navigation between the poster stage, filmstrip and title projection. The check starts a temporary local server and uses a fresh browser profile.
 
 Browser validation covered migration, CRUD in both sections, reload and full browser restart, cross-tab updates, failed artwork, unavailable storage, keyboard dialogs, and layouts from 320 to 1440 pixels. The search and details flow was tested through the Worker with an isolated upstream test fixture. Wrangler packaged the Worker successfully. During Phase 2A, cloud requests to the deployed Worker and the image CDN returned HTTP 403. The visual walkthrough records the local integration coverage.
 
-The desktop and portrait cinema street illustrations, hydrangeas and engraved camera were generated for AFTERCREDITS. The site self-hosts Instrument Serif, DM Sans, IBM Plex Mono, and GSAP. Font licenses are in `assets/fonts`. [GSAP license](https://gsap.com/standard-license/)
+The desktop and portrait cinema street illustrations, hydrangeas, engraved camera, and transparent glass film sculpture were generated for AFTERCREDITS. The site self-hosts Instrument Serif, DM Sans, IBM Plex Mono, and GSAP. Font licenses are in `assets/fonts`. [GSAP license](https://gsap.com/standard-license/)
 
 This product uses the TMDB API but is not endorsed or certified by TMDB. Catalog artwork and metadata are supplied by TMDB and the respective rights holders. The interface includes the TMDB mark and attribution in its footer. [TMDB](https://www.themoviedb.org/)
