@@ -1,3 +1,5 @@
+import { alignLens } from './viewfinder.js';
+
 const reduced = matchMedia('(prefers-reduced-motion: reduce)');
 const animate = () => window.gsap && !reduced.matches && !document.hidden;
 
@@ -11,7 +13,10 @@ reduced.addEventListener('change', (event) => {
 
 export function entrance() {
   if (!animate()) return;
-  const sequence = gsap.timeline({ defaults: { ease, clearProps: 'transform,opacity' } });
+  const sequence = gsap.timeline({
+    onComplete: alignLens,
+    defaults: { ease, clearProps: 'transform,opacity' },
+  });
   sequence
     .from('.plaza', { scale: 1.025, xPercent: 0.35, duration: 1.4 }, 0)
     .from(
@@ -20,8 +25,8 @@ export function entrance() {
       0.035
     )
     .from(
-      ['.journal-index', '.toolbar'],
-      { opacity: 0, y: 7, stagger: 0.045, duration: 0.4 },
+      ['.viewer', '.archive-head'],
+      { opacity: 0.35, y: 14, scale: 0.97, stagger: 0.06, duration: 0.54 },
       0.16
     );
 }
@@ -123,22 +128,29 @@ export function statistic(node, value, format) {
   });
 }
 
-export function showDialog(dialog) {
+export function showDialog(dialog, opener) {
   dialog.showModal();
-  if (animate())
-    gsap.fromTo(
-      dialog,
-      { y: 16, opacity: 0, scale: 0.985 },
-      {
-        y: 0,
-        opacity: 1,
-        scale: 1,
-        duration: 0.32,
-        ease: 'power3.out',
-        clearProps: 'all',
-        overwrite: true,
-      }
-    );
+  if (!animate()) return;
+  const from = opener.getBoundingClientRect();
+  const to = dialog.getBoundingClientRect();
+  const clamp = gsap.utils.clamp;
+  // Expand toward the chosen object while keeping the readable pane close to its final position.
+  const x = clamp(-36, 36, (from.left + from.width / 2 - to.left - to.width / 2) * 0.14);
+  const y = clamp(-26, 26, (from.top + from.height / 2 - to.top - to.height / 2) * 0.14);
+  gsap.fromTo(
+    dialog,
+    { x, y, opacity: 0.3, scale: 0.94 },
+    {
+      x: 0,
+      y: 0,
+      opacity: 1,
+      scale: 1,
+      duration: 0.32,
+      ease: 'power3.out',
+      clearProps: 'all',
+      overwrite: true,
+    }
+  );
 }
 
 export function hideDialog(dialog) {

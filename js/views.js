@@ -21,7 +21,7 @@ function el(tag, cls, text) {
   return node;
 }
 export function artwork(path, size, type, title) {
-  const frame = el('div', 'artwork');
+  const frame = el('span', 'artwork');
   if (title) {
     const initials = title
       .trim()
@@ -43,8 +43,9 @@ export function artwork(path, size, type, title) {
     img.loading = size === 'w342' ? 'lazy' : 'eager';
     img.decoding = 'async';
     img.addEventListener('error', () => img.remove(), { once: true });
-    if (size === 'w342' || size === 'w185') {
-      const larger = imageUrl(path, size === 'w342' ? 'w780' : 'w342');
+    const higherDensity = { w185: 'w342', w342: 'w780', w780: 'w1280' }[size];
+    if (higherDensity) {
+      const larger = imageUrl(path, higherDensity);
       img.srcset = src + ' 1x, ' + larger + ' 2x';
     }
     img.src = src;
@@ -102,15 +103,30 @@ export function resultButton(item, selected = false) {
     el('strong', '', item.metadata.title),
     el('small', '', date + ' · ' + (item.mediaType === 'tv' ? 'TV series' : 'Movie'))
   );
-  const poster = artwork(
-    item.metadata.posterPath,
-    selected ? 'w185' : 'w92',
-    item.mediaType,
-    item.metadata.title
-  );
+  const poster = artwork(item.metadata.posterPath, 'w185', item.mediaType, item.metadata.title);
   button.append(poster, text);
   if (!selected) button.append(icon('next'));
   return button;
+}
+export function presentLatest(button, entry) {
+  button.hidden = !entry;
+  const stage = button.querySelector('.latest-image');
+  stage.replaceChildren();
+  if (!entry) return;
+  const meta = entry.metadata;
+  const wide = Boolean(imageUrl(meta?.backdropPath, 'w780'));
+  stage.classList.toggle('portrait-source', !wide && Boolean(meta?.posterPath));
+  stage.append(
+    artwork(
+      wide ? meta.backdropPath : meta?.posterPath,
+      wide ? 'w780' : 'w185',
+      entry.mediaType,
+      entry.title
+    )
+  );
+  button.querySelector('small').textContent =
+    entry.mediaType === 'tv' ? 'Latest series' : 'Latest movie';
+  button.querySelector('strong').textContent = entry.title;
 }
 export function emptyState(searching, type) {
   const panel = el('div', searching ? 'no-match' : 'empty');

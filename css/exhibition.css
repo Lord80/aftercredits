@@ -53,164 +53,147 @@
   border: 1px solid #f9efdb60;
   border-radius: 33% 2px 26% 2px;
 }
-/* Inked safety glass. Gallery mounts simulate their edge optically; they never sample the backdrop. */
+/* Each print floats above its title plate. The gallery shares one backing and
+   the poster rims use only inset shadows, including in a full archive. */
 .poster-card {
-  --mount: #183f44;
-  --edge-light: #c1dbd5;
-  min-width: 0;
   position: relative;
+  min-width: 0;
   display: flex;
   flex-direction: column;
-  color: #fcfbec;
-  border: 1px solid var(--edge-light);
-  border-radius: 7px 7px 12px 3px;
-  padding: 5px;
-  background: linear-gradient(148deg, #72938bc9, transparent 34%, #3560688f 100%), var(--mount);
-  box-shadow:
-    inset 0 1px #fff9,
-    inset 1px 0 #edf9eb55,
-    inset -1px -2px #1231388f,
-    0 3px 3px #153f4826,
-    0 12px 24px -14px #17363cd9;
-  transition:
-    box-shadow var(--quick),
-    border-color var(--quick);
-}
-.poster-card:focus-within,
-.poster-card:has(.open-card[aria-expanded='true']) {
-  border-color: #fff3bc;
-  box-shadow:
-    0 0 0 2px #183f44,
-    0 0 0 4px #f2e0ac,
-    0 9px 20px #17363c55;
 }
 .open-card {
-  width: 100%;
   display: block;
-  border-radius: 3px;
-  color: inherit;
+  width: 100%;
   padding: 0;
-  text-align: left;
   background: transparent;
-}
-.open-card:focus-visible {
-  outline: 2px solid #fff0c2;
-  outline-offset: 1px;
+  color: var(--ink);
+  border-radius: 13px;
+  text-align: left;
 }
 .open-card > .artwork {
-  aspect-ratio: 2/3;
   isolation: isolate;
-  border-radius: 3px 3px 0 0;
-  border: 1px solid #133638;
+  aspect-ratio: 2/3;
+  border-radius: 13px;
+  outline: 1px solid #ffffffce;
+  outline-offset: 2px;
+  box-shadow:
+    0 6px 9px -4px #112c455e,
+    0 16px 26px -13px #26496196;
+  transition:
+    transform 0.38s var(--ease-out),
+    box-shadow 0.38s var(--ease-out);
 }
+.open-card > .artwork::before,
 .open-card > .artwork::after {
   content: '';
-  position: absolute;
   inset: 0;
+  position: absolute;
+  z-index: 1;
   pointer-events: none;
+  border-radius: inherit;
+}
+.open-card > .artwork::before {
   box-shadow:
-    inset 0 0 0 1px #ffffff4d,
-    inset 0 -14px 25px -19px #173a3f;
-  background: linear-gradient(119deg, transparent 18%, #fff3 33%, transparent 49%);
-  transform: translateX(-52%);
-  opacity: 0.32;
+    inset 0 2px 2px #ffffffb5,
+    inset 1px 0 2px #fff8,
+    inset -2px -2px 4px #1834456e;
+}
+.open-card > .artwork::after {
+  background: linear-gradient(124deg, transparent 22%, #f5ffff73 34%, transparent 45%);
+  transform: translateX(-80%);
+  opacity: 0;
   transition:
-    transform 0.43s var(--ease-out),
-    opacity 0.3s;
+    opacity 0.3s,
+    transform 0.48s var(--ease-out);
 }
-@media (hover: hover) {
-  .poster-card:hover {
-    border-color: #f2f9e9;
+.open-card:focus-visible {
+  outline: 3px solid #3a4477;
+  outline-offset: 4px;
+}
+.open-card[aria-expanded='true'] > .artwork {
+  outline: 2px solid #fff2bf;
+}
+@media (hover: hover) and (prefers-reduced-motion: no-preference) {
+  .open-card:hover > .artwork {
+    transform: perspective(900px) translateY(-6px) rotateX(2deg);
     box-shadow:
-      inset 0 1px white,
-      0 12px 22px -7px #132f3f99;
+      0 13px 14px -8px #15334985,
+      0 23px 38px -15px #213c5c91;
   }
-  .open-card:hover .artwork::after {
-    transform: translateX(36%);
-    opacity: 0.75;
+  .open-card:hover > .artwork::after {
+    transform: translateX(32%);
+    opacity: 0.5;
   }
-  .open-card:hover .artwork img {
-    transform: scale(1.025);
+  #latest:hover img {
+    transform: scale(1.045);
   }
 }
-.open-card:active .artwork {
-  opacity: 0.93;
+.open-card:active > .artwork {
+  transform: scale(0.986);
 }
 .score-badge {
   position: absolute;
-  right: 6px;
-  bottom: 6px;
-  z-index: 1;
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 4px 7px;
-  border: 1px solid #deccab;
-  border-radius: 2px 6px 2px 6px;
-  background: #18363bec;
-  box-shadow:
-    inset 0 1px #fff3,
-    0 2px 4px #132f3f55;
-  color: #fff7dc;
-  font: 400 12px/1.25 var(--mono);
-}
-.score-badge .icon,
-.rating-read .icon,
-.detail-rating .icon {
-  width: 13px;
-  height: 13px;
-  fill: #f3c492;
-  stroke: #f3c492;
-}
-.print-label {
-  padding: 12px 8px 11px;
-}
-.poster-caption {
+  top: 8px;
+  right: 8px;
+  z-index: 2;
   display: flex;
   align-items: center;
-  gap: 6px;
-  color: #cfe2d9;
+  gap: 4px;
+  padding: 4px 9px;
+  border: 1px solid #f3f9e9b3;
+  border-radius: 25px;
+  color: #fff6dc;
+  background: linear-gradient(148deg, #365865ed, #172d40f0);
+  box-shadow:
+    inset 0 1px 1px #ffffff6b,
+    0 3px 7px #1329425e;
+  font: 11px/1.4 var(--mono);
+}
+.score-badge .icon,
+.detail-rating .icon {
+  width: 12px;
+  height: 12px;
+  fill: #f8c996;
+  stroke: #f8c996;
+}
+.print-label {
+  padding: 15px 2px 8px;
+}
+.poster-caption {
+  display: block;
+  color: #34515e;
   font-size: 10px;
 }
-.poster-caption::before {
-  content: '';
-  width: 11px;
-  height: 2px;
-  background: #efbc8d;
-  transform: skew(-30deg);
-}
 .poster-card h3 {
-  font-size: clamp(24px, 2vw, 33px);
-  line-height: 1.08;
-  letter-spacing: -0.018em;
-  margin-top: 5px;
+  margin-top: 3px;
+  font-size: clamp(22px, 2vw, 33px);
+  letter-spacing: -0.028em;
+  line-height: 1.04;
   overflow-wrap: anywhere;
   display: -webkit-box;
-  -webkit-line-clamp: 3;
   -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
   overflow: hidden;
 }
 .card-bottom {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 4px;
   flex-wrap: wrap;
-  gap: 2px 5px;
   margin-top: auto;
-  padding: 5px 2px 1px 7px;
-  border-top: 1px solid #b7d5cc59;
+  padding-top: 6px;
+  border-top: 1px solid #46646b52;
 }
 .added-date {
-  display: grid;
-  font-size: 10px;
-  line-height: 1.35;
-  color: #f2f5e9;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 4px;
+  color: #35515e;
+  font-size: 11px;
 }
 .date-prefix {
-  font: 9px/1.4 var(--mono);
-  letter-spacing: 0.065em;
-  text-transform: uppercase;
-  color: #c7dbd5;
+  font-weight: 600;
 }
 .actions {
   display: flex;
@@ -218,38 +201,43 @@
 }
 .actions .icon-button {
   width: 32px;
-  height: 34px;
-  border-radius: 5px;
-  border: 1px solid #c2e1da4a;
-  background: #f3fff00d;
-  color: #f1f7ec;
-  box-shadow: inset 0 1px #f3ffe91a;
+  height: 32px;
+  border-radius: 50%;
+  background: #edf7f794;
+  color: #284c5a;
+  box-shadow: inset 0 1px 1px #fff;
 }
 .actions .icon-button:hover,
 .actions .icon-button:focus-visible {
-  background: #eff8ec;
-  color: var(--brand-ink);
+  background: #fff;
 }
 .actions [data-action='delete']:hover {
-  background: #ffe5da;
-  color: #762f32;
+  color: #833d44;
 }
 .actions .icon {
-  width: 15px;
-  height: 15px;
+  width: 14px;
+  height: 14px;
 }
-.actions :focus-visible {
-  outline: 2px solid #ffe5b8;
-  outline-offset: 1px;
+.latest-image.portrait-source img {
+  object-fit: contain;
+  background: linear-gradient(100deg, #274854, #183844);
 }
-@media (max-width: 510px) {
+@media (max-width: 650px) {
+  .open-card > .artwork {
+    border-radius: 10px;
+  }
   .print-label {
-    padding: 10px 5px;
+    padding: 11px 0 7px;
   }
-  .card-bottom {
-    padding: 5px 1px 1px 3px;
+  .score-badge {
+    right: 6px;
+    top: 6px;
+    padding: 3px 6px;
   }
-  .actions {
-    gap: 2px;
+  .date-prefix {
+    display: none;
+  }
+  .added-date {
+    font-size: 10px;
   }
 }

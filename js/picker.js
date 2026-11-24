@@ -1,4 +1,4 @@
-import { configured, details, search } from './catalog.js';
+import { configured, details, imageUrl, search } from './catalog.js';
 import { resultButton } from './views.js';
 
 const get = (id) => document.getElementById(id);
@@ -23,6 +23,7 @@ function resetResults() {
   list.replaceChildren();
   get('picked').replaceChildren();
   get('picked').hidden = true;
+  get('lookup-fields').hidden = false;
   get('retry').hidden = true;
   delete status.dataset.loading;
   delete status.dataset.error;
@@ -78,6 +79,7 @@ async function choose(item) {
   const signal = controller.signal;
   const panel = get('picked');
   panel.hidden = false;
+  get('lookup-fields').hidden = true;
   const selected = resultButton(item, true);
   const change = document.createElement('span');
   change.className = 'change-match';
@@ -95,6 +97,16 @@ async function choose(item) {
     const full = await details(item, signal);
     if (signal.aborted) return;
     picked = full;
+    const backdrop = imageUrl(full.metadata.backdropPath, 'w780');
+    if (backdrop) {
+      const image = new Image();
+      image.className = 'picked-backdrop';
+      image.alt = '';
+      image.decoding = 'async';
+      image.addEventListener('error', () => image.remove(), { once: true });
+      image.src = backdrop;
+      selected.prepend(image);
+    }
     const names = (full.metadata.genres || []).map((genre) => genre.name).filter(Boolean);
     if (names.length) {
       const genres = document.createElement('small');
@@ -136,12 +148,14 @@ export function startPicker(mediaType, isEdit) {
   query.value = '';
   type.value = mediaType;
   get('add-options').hidden = isEdit;
+  get('add-type').hidden = isEdit;
   get('lookup-mode').disabled = !configured;
   get('connection-note').hidden = configured;
   setMode(!isEdit && configured ? 'lookup' : 'manual');
 }
 export function focusPicker() {
-  (mode === 'lookup' ? query : get('title')).focus();
+  const field = mode === 'lookup' ? (get('picked').querySelector('button') ?? query) : get('title');
+  field.focus();
 }
 export function stopPicker() {
   cancel();

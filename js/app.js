@@ -16,8 +16,9 @@ import {
   showDialog,
   statistic,
 } from './motion.js';
+import { alignLens, startViewfinder } from './viewfinder.js';
 import { startPicker, stopPicker, focusPicker, selection } from './picker.js';
-import { emptyState, icon, movieRow, presentDetails } from './views.js';
+import { emptyState, icon, movieRow, presentDetails, presentLatest } from './views.js';
 
 const byId = (id) => document.getElementById(id);
 const results = byId('results');
@@ -29,6 +30,8 @@ const title = byId('title');
 const rating = byId('rating');
 const formError = byId('form-error');
 let movies = [];
+let latestByType;
+let displayedLatest;
 let section = 'movie';
 let subject = null;
 let opener = null;
@@ -40,6 +43,12 @@ let toastTimer;
 function refresh() {
   const state = snapshot();
   movies = state.items;
+  latestByType = { movie: null, tv: null };
+  for (const entry of movies) {
+    const prior = latestByType[entry.mediaType];
+    if (!prior || Date.parse(entry.added) > Date.parse(prior.added))
+      latestByType[entry.mediaType] = entry;
+  }
   byId('storage-note').textContent = state.notice;
   byId('storage-note').hidden = !state.notice;
   statistic(byId('total'), movies.length, (n) => String(Math.round(n)).padStart(2, '0'));
@@ -56,6 +65,12 @@ function render() {
   cancelAnimationFrame(renderFrame);
   const previous = positions(results);
   document.body.dataset.currentSection = section;
+  const latest = latestByType[section];
+  if (displayedLatest !== latest) {
+    presentLatest(byId('latest'), latest);
+    displayedLatest = latest;
+    if (!latest) alignLens();
+  }
   const group = movies.filter((m) => m.mediaType === section);
   document
     .querySelectorAll('[data-section]')
@@ -101,7 +116,9 @@ function highlightRating() {
   const score = byId('score');
   if (editor.open && score.textContent !== value.toFixed(1)) accentRating(score);
   score.textContent = value.toFixed(1);
-  rating.style.setProperty('--progress', ((value - 1) / 9) * 100 + '%');
+  const meter = rating.closest('.meter');
+  meter.style.setProperty('--sweep', (value - 1) * 30 + 'deg');
+  meter.style.setProperty('--progress', ((value - 1) / 9) * 100 + '%');
   rating.setAttribute('aria-valuetext', value + ' out of 10');
   byId('increase').disabled = value >= 10;
   byId('decrease').disabled = value <= 1;
@@ -114,14 +131,14 @@ function openPanel(action, film, button) {
     const dialog = byId('detail-dialog');
     button.setAttribute('aria-expanded', 'true');
     presentDetails(dialog, film);
-    showDialog(dialog);
+    showDialog(dialog, button);
     dialog.querySelector('.detail-scroll').scrollTop = 0;
     dialog.querySelector('.detail-close').focus({ preventScroll: true });
     return;
   }
   if (action === 'delete') {
     byId('delete-copy').textContent = '“' + film.title + '” will be deleted from your collection.';
-    showDialog(confirm);
+    showDialog(confirm, button);
     byId('keep').focus();
     return;
   }
@@ -133,7 +150,7 @@ function openPanel(action, film, button) {
   title.removeAttribute('aria-invalid');
   highlightRating();
   startPicker(film?.mediaType ?? section, Boolean(film));
-  showDialog(editor);
+  showDialog(editor, button);
   focusPicker();
 }
 
@@ -146,7 +163,7 @@ async function closePanel(dialog, updateCollection) {
   if (dialog.id === 'detail-dialog') opener?.setAttribute('aria-expanded', 'false');
   updateCollection?.();
   let target = opener;
-  if (!target?.isConnected) {
+  if (!target?.isConnected || target.hidden) {
     const cards = [...results.querySelectorAll('[data-film]')];
     const current = cards.find((card) => card.dataset.film === subject);
     const neighbor = cards.find((card) => card.dataset.film === neighborId);
@@ -207,7 +224,9 @@ async function submit(event) {
   } catch (error) {
     if (!deleting) {
       formError.textContent = error.message;
-      const field = byId('catalog-panel').hidden ? title : byId('catalog-query');
+      const field = byId('catalog-panel').hidden
+        ? title
+        : (byId('picked').querySelector('button') ?? byId('catalog-query'));
       field.setAttribute('aria-invalid', 'true');
       focusPicker();
     } else {
@@ -235,6 +254,7 @@ document.addEventListener('click', (event) => {
     render();
     query.focus();
   }
+  if (button.id === 'latest' && displayedLatest) openPanel('details', displayedLatest, button);
   if (button.dataset.action) {
     const film = movies.find((item) => item.id === button.closest('[data-film]').dataset.film);
     if (film) openPanel(button.dataset.action, film, button);
@@ -274,6 +294,7 @@ window.addEventListener('storage', (event) => {
   if (event.key === STORAGE_KEY || event.key === LEGACY_KEY || event.key === null) refresh();
 });
 
+startViewfinder();
 await initialize();
 refresh();
 entrance();
