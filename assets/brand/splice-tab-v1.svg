@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" color="#153e46" role="img" aria-labelledby="asset-name">
+  <title id="asset-name">Aftercredits</title>
+  <rect width="16" height="16" rx="3" fill="#f9f4e7"/>
+  <path d="M1.5 12.5V8c0-3.8 2.4-6.5 6.5-6.5h6.2l-2.3 2.6H8.1c-2.4 0-3.9 1.5-3.9 4.1v2.6Zm2 1.1 6.6-4V6.4L13 4.7v5.7c0 .7-.4 1.1-1 1.5L7.2 15H1.3Z"/>
+  <path fill="#bf653b" d="M5.5 9a2.1 2.1 0 1 1 3.6-2.1Z"/>
+</svg>

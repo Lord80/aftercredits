@@ -9,7 +9,8 @@
       content="A private watch journal for movies and TV series, from the opening scene to the last frame."
     />
     <title>AFTERCREDITS — Personal Watch Journal</title>
-    <link rel="icon" href="./assets/reel.svg" type="image/svg+xml" />
+    <link rel="icon" href="./assets/brand/splice-tab-v1-32.png" sizes="32x32" type="image/png" />
+    <link rel="icon" href="./assets/brand/splice-tab-v1.svg" sizes="any" type="image/svg+xml" />
     <link
       rel="preload"
       href="./assets/fonts/instrument-serif-latin-400-normal.woff2"
@@ -25,20 +26,8 @@
   </head>
   <body>
     <svg class="symbols" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-      <symbol id="reel" viewBox="0 0 32 32">
-        <rect x="1" y="1" width="30" height="30" rx="9" fill="currentColor" />
-        <g
-          stroke="#fff"
-          fill="none"
-          stroke-width="1.7"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-        >
-          <path
-            d="m6.5 13.1 18.3-4.4-1-4.1-18.3 4.5zM9 8.3l3.4 3.2m2.4-4.6 3.4 3.2m2.1-4.6 3.4 3.2M7.2 14.7h18v9.1c0 1.2-1 2.2-2.2 2.2H9.4c-1.2 0-2.2-1-2.2-2.2z"
-          />
-          <path d="m14.5 18 4.3 2.5-4.3 2.4z" fill="#fff" stroke="none" />
-        </g>
+      <symbol id="journal" viewBox="0 0 24 24">
+        <path d="M3 4.5c3.6-.8 6.3-.2 9 1.7 2.8-1.9 5.5-2.5 9-1.7v14c-3.5-.8-6.2-.2-9 1.5-2.7-1.7-5.4-2.3-9-1.5ZM12 6.2V20" />
       </symbol>
       <symbol id="tv" viewBox="0 0 24 24">
         <rect x="2" y="4" width="20" height="14" rx="2" />
@@ -89,12 +78,19 @@
     </div>
     <header class="site-header">
       <div class="header-inner pane">
-        <a class="brand" href="#opening" aria-label="Aftercredits home"
-          ><svg aria-hidden="true"><use href="#reel" /></svg><span>AFTERCREDITS</span></a
-        >
+        <a class="brand" href="#opening" aria-label="Aftercredits home">
+          <svg class="brand-symbol" viewBox="0 0 54 56" aria-hidden="true">
+            <use class="splice-upper" href="./assets/brand/aftercredits.svg#upper-frame" />
+            <use class="splice-lower" href="./assets/brand/aftercredits.svg#lower-frame" />
+            <use class="splice-light" href="./assets/brand/aftercredits.svg#light" />
+          </svg>
+          <span class="brand-lettering" aria-hidden="true">
+            <svg viewBox="-1 -2 306 34"><use href="./assets/brand/aftercredits.svg#wordmark" /></svg>
+          </span>
+        </a>
         <nav aria-label="Journal navigation">
           <a href="#collection" aria-label="Journal collection"
-            ><svg class="icon"><use href="#film" /></svg><span>Journal</span></a
+            ><svg class="icon"><use href="#journal" /></svg><span>Journal</span></a
           >
           <button type="button" data-add aria-label="Add title">
             <svg class="icon"><use href="#plus" /></svg><span>Add title</span>
@@ -106,7 +102,7 @@
       <section class="opening" id="opening" aria-labelledby="headline">
         <div class="opening-copy">
           <p class="eyebrow"><span></span>Personal watch journal</p>
-          <h1 id="headline"><span>Beyond the</span> <em>frame.</em></h1>
+          <h1 id="headline"><span>Beyond <i>the</i></span> <em>frame<span class="headline-stop">.</span></em></h1>
           <p class="intro">Keep the movies and series that stay with you.</p>
           <button class="button primary hero-add" data-add>
             <svg class="icon"><use href="#plus" /></svg>Add a title
@@ -167,9 +163,9 @@
       </section>
     </main>
     <footer class="footer">
-      <a class="footer-brand" href="#opening"
-        ><svg aria-hidden="true"><use href="#reel" /></svg>AFTERCREDITS</a
-      >
+      <a class="footer-brand" href="#opening" aria-label="Aftercredits home">
+        <img src="./assets/brand/aftercredits.svg" width="368" height="56" alt="" />
+      </a>
       <div class="attribution">
         <a href="https://www.themoviedb.org/" aria-label="The Movie Database"
           ><img src="./assets/tmdb.svg" alt="TMDB" width="44" height="25"

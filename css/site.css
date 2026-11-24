@@ -40,6 +40,8 @@
 
 :root {
   color-scheme: light;
+  --brand-ink: #153e46;
+  --brand-light: #bf653b;
   --bg: #eff4fa;
   --ink: #193e48;
   --muted: #4e6078;
@@ -149,7 +151,7 @@ h3 {
   flex: none;
   fill: none;
   stroke: currentColor;
-  stroke-width: 1.65;
+  stroke-width: 1.7;
   stroke-linecap: round;
   stroke-linejoin: round;
 }
@@ -222,7 +224,7 @@ h3 {
 .poster-caption {
   font-family: var(--mono);
   font-size: 10px;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.085em;
   text-transform: uppercase;
 }
 .mode-switch {
@@ -333,7 +335,8 @@ body:has(dialog[open]) {
 }
 .sheet h2 {
   font-size: 45px;
-  letter-spacing: -0.03em;
+  letter-spacing: -0.024em;
+  line-height: 1.04;
   margin: 10px 0 23px;
 }
 .field-label {
@@ -474,10 +477,10 @@ body:has(dialog[open]) {
 }
 .rating-read output {
   display: inline-block;
-  min-width: 1.5em;
+  font: 25px/1.1 var(--mono);
+  letter-spacing: -0.06em;
+  min-width: 4ch;
   text-align: right;
-  font-variant-numeric: tabular-nums;
-  font: 29px/1 var(--serif);
 }
 .rating-read small {
   font: 11px var(--mono);
@@ -645,7 +648,7 @@ body:has(dialog[open]) {
 }
 #detail-facts dt {
   color: var(--soft-ink);
-  font: 9px var(--mono);
+  font: 10px var(--mono);
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
@@ -671,7 +674,8 @@ body:has(dialog[open]) {
   font-size: 13px;
 }
 .detail-rating strong {
-  font: 28px/1 var(--serif);
+  font: 24px/1.1 var(--mono);
+  letter-spacing: -0.055em;
 }
 .detail-rating small,
 #detail-added {

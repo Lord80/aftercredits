@@ -14,9 +14,8 @@ export function entrance() {
   const sequence = gsap.timeline({ defaults: { ease, clearProps: 'transform,opacity' } });
   sequence
     .from('.plaza', { scale: 1.025, xPercent: 0.35, duration: 1.4 }, 0)
-    .from('.brand', { opacity: 0, y: -5, duration: 0.32 }, 0)
     .from(
-      ['.eyebrow', '.opening h1 span', '.opening h1 em', '.intro', '.hero-add'],
+      ['.eyebrow', '.opening h1 > span', '.opening h1 em', '.intro', '.hero-add'],
       { opacity: 0, y: 14, stagger: 0.055, duration: 0.52 },
       0.035
     )

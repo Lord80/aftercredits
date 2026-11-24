@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 54 56" fill="currentColor" color="#153e46" role="img" aria-labelledby="asset-name">
+  <title id="asset-name">Aftercredits — Splice</title>
+  <path id="upper-frame" d="M5 46V29C5 14 14 5 29 5H49L41 14H30C20 14 14 20 14 30V40Z"/>
+    <path id="lower-frame" d="M17 45 34 35V21l10-6v22c0 3-1 4-4 6L23 53H4Z"/>
+    <g fill="#bf653b"><path id="light" d="M19 31a7 7 0 1 1 12-7Z"/></g>
+</svg>
