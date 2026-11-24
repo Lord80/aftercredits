@@ -2,7 +2,7 @@
 
 A personal watch journal for movies and TV series. The static frontend runs on GitHub Pages. A small Cloudflare Worker handles optional TMDB catalog requests. Collection data stays in the browser.
 
-The [identity guide](docs/phase-2b/) includes the Splice symbol, custom wordmark, SVG downloads, animation and desktop and phone captures. The [Phase 2A walkthrough](docs/phase-2a/) documents the cinema street composition.
+See the glass exhibition walkthrough for paired desktop and phone captures of the collection, catalog picker and title details. The earlier guides document the Splice identity and the cinema street composition. [Phase 2C interface](docs/phase-2c/) · [Phase 2B identity](docs/phase-2b/) · [Phase 2A environment](docs/phase-2a/)
 
 ## What works
 
@@ -57,6 +57,7 @@ Browsing, searching, editing, rating, and deleting saved entries work when TMDB 
 - `js/app.js`, `js/views.js`, and `js/motion.js` connect the UI, poster cards, dialogs, and reduced-motion-aware transitions.
 - `worker/index.mjs` implements the proxy and maps TMDB’s movie and TV fields into a common shape.
 - Run `node --test tests/*.test.mjs` with Node 22.7 or newer for the storage and Worker contract tests. Test fixtures are isolated from the application and require no credential.
+- With Python Playwright and Chromium installed, run `python3 tests/picker.browser.py` to exercise keyboard media selection, catalog retry, preview cleanup and rating persistence. The check starts a temporary local server and uses a fresh browser profile.
 
 Browser validation covered migration, CRUD in both sections, reload and full browser restart, cross-tab updates, failed artwork, unavailable storage, keyboard dialogs, and layouts from 320 to 1440 pixels. The search and details flow was tested through the Worker with an isolated upstream test fixture. Wrangler packaged the Worker successfully. During Phase 2A, cloud requests to the deployed Worker and the image CDN returned HTTP 403. The visual walkthrough records the local integration coverage.
 

@@ -112,8 +112,10 @@ function openPanel(action, film, button) {
   opener = button;
   if (action === 'details') {
     const dialog = byId('detail-dialog');
+    button.setAttribute('aria-expanded', 'true');
     presentDetails(dialog, film);
     showDialog(dialog);
+    dialog.querySelector('.detail-scroll').scrollTop = 0;
     dialog.querySelector('.detail-close').focus({ preventScroll: true });
     return;
   }
@@ -141,6 +143,7 @@ async function closePanel(dialog, updateCollection) {
   const neighborId = (previousCard?.nextElementSibling ?? previousCard?.previousElementSibling)
     ?.dataset.film;
   await hideDialog(dialog);
+  if (dialog.id === 'detail-dialog') opener?.setAttribute('aria-expanded', 'false');
   updateCollection?.();
   let target = opener;
   if (!target?.isConnected) {
@@ -204,7 +207,8 @@ async function submit(event) {
   } catch (error) {
     if (!deleting) {
       formError.textContent = error.message;
-      title.setAttribute('aria-invalid', 'true');
+      const field = byId('catalog-panel').hidden ? title : byId('catalog-query');
+      field.setAttribute('aria-invalid', 'true');
       focusPicker();
     } else {
       await closePanel(dialog);
