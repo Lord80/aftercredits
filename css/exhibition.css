@@ -53,191 +53,140 @@
   border: 1px solid #f9efdb60;
   border-radius: 33% 2px 26% 2px;
 }
-/* Each print floats above its title plate. The gallery shares one backing and
-   the poster rims use only inset shadows, including in a full archive. */
+/* A shared film base carries individually cut frames. Only three archival
+   posters on the stage receive perspective transforms. */
 .poster-card {
   position: relative;
+  flex: 0 0 clamp(190px, 17.2vw, 265px);
   min-width: 0;
-  display: flex;
-  flex-direction: column;
+  scroll-snap-align: start;
+  display: grid;
+  grid-template-rows: 1fr auto;
+  padding: 6px 10px;
+  border-left: 1px solid #c1dce447;
+}
+.poster-card:first-child {
+  border-left: 0;
+}
+.poster-card[data-current] {
+  background: linear-gradient(115deg, #d3f6ff27, #eee4d40d);
+  box-shadow: inset 0 -2px #edbe85;
 }
 .open-card {
-  display: block;
+  grid-area: 1/1/3/2;
   width: 100%;
-  padding: 0;
+  display: grid;
+  grid-template-columns: 55px minmax(0, 1fr);
+  align-items: start;
+  gap: 9px;
+  color: #fffaed;
   background: transparent;
-  color: var(--ink);
-  border-radius: 13px;
   text-align: left;
+  padding: 0;
+  border-radius: 4px;
 }
 .open-card > .artwork {
-  isolation: isolate;
+  width: 100%;
   aspect-ratio: 2/3;
-  border-radius: 13px;
-  outline: 1px solid #ffffffce;
-  outline-offset: 2px;
+  border-radius: 3px;
   box-shadow:
-    0 6px 9px -4px #112c455e,
-    0 16px 26px -13px #26496196;
-  transition:
-    transform 0.38s var(--ease-out),
-    box-shadow 0.38s var(--ease-out);
+    0 2px 5px #0b283880,
+    0 0 0 1px #daeefc8a;
 }
-.open-card > .artwork::before,
-.open-card > .artwork::after {
-  content: '';
-  inset: 0;
-  position: absolute;
-  z-index: 1;
-  pointer-events: none;
-  border-radius: inherit;
+.open-card:focus-visible,
+.actions button:focus-visible {
+  outline: 2px solid #ffe4af;
+  outline-offset: 1px;
 }
-.open-card > .artwork::before {
-  box-shadow:
-    inset 0 2px 2px #ffffffb5,
-    inset 1px 0 2px #fff8,
-    inset -2px -2px 4px #1834456e;
+.open-card .bookplate {
+  inset: 3px;
+  font-size: 23px;
 }
-.open-card > .artwork::after {
-  background: linear-gradient(124deg, transparent 22%, #f5ffff73 34%, transparent 45%);
-  transform: translateX(-80%);
-  opacity: 0;
-  transition:
-    opacity 0.3s,
-    transform 0.48s var(--ease-out);
-}
-.open-card:focus-visible {
-  outline: 3px solid #3a4477;
-  outline-offset: 4px;
-}
-.open-card[aria-expanded='true'] > .artwork {
-  outline: 2px solid #fff2bf;
-}
-@media (hover: hover) and (prefers-reduced-motion: no-preference) {
-  .open-card:hover > .artwork {
-    transform: perspective(900px) translateY(-6px) rotateX(2deg);
-    box-shadow:
-      0 13px 14px -8px #15334985,
-      0 23px 38px -15px #213c5c91;
-  }
-  .open-card:hover > .artwork::after {
-    transform: translateX(32%);
-    opacity: 0.5;
-  }
-  #latest:hover img {
-    transform: scale(1.045);
-  }
-}
-.open-card:active > .artwork {
-  transform: scale(0.986);
-}
-.score-badge {
-  position: absolute;
-  top: 8px;
-  right: 8px;
-  z-index: 2;
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  padding: 4px 9px;
-  border: 1px solid #f3f9e9b3;
-  border-radius: 25px;
-  color: #fff6dc;
-  background: linear-gradient(148deg, #365865ed, #172d40f0);
-  box-shadow:
-    inset 0 1px 1px #ffffff6b,
-    0 3px 7px #1329425e;
-  font: 11px/1.4 var(--mono);
-}
-.score-badge .icon,
-.detail-rating .icon {
-  width: 12px;
-  height: 12px;
-  fill: #f8c996;
-  stroke: #f8c996;
+.open-card .bookplate::after {
+  inset: 2px;
 }
 .print-label {
-  padding: 15px 2px 8px;
+  padding: 0 0 31px;
 }
-.poster-caption {
-  display: block;
-  color: #34515e;
-  font-size: 10px;
+.poster-caption,
+.date-prefix {
+  font: 9px/1.3 var(--mono);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #d0e3e9;
 }
 .poster-card h3 {
-  margin-top: 3px;
-  font-size: clamp(22px, 2vw, 33px);
-  letter-spacing: -0.028em;
-  line-height: 1.04;
+  font: 400 clamp(19px, 1.55vw, 26px)/1.02 var(--serif);
+  margin-top: 4px;
+  letter-spacing: -0.02em;
   overflow-wrap: anywhere;
   display: -webkit-box;
+  -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
-  -webkit-line-clamp: 3;
   overflow: hidden;
 }
-.card-bottom {
-  display: flex;
+.score-badge {
+  display: inline-flex;
   align-items: center;
+  gap: 2px;
+  position: absolute;
+  right: 2px;
+  bottom: 2px;
+  padding: 2px 4px;
+  border-radius: 3px;
+  background: #152f40ed;
+  color: #fff6db;
+  font: 9px var(--mono);
+}
+.score-badge .icon {
+  width: 9px;
+  height: 9px;
+  fill: #ffcfa2;
+  stroke: #ffcfa2;
+}
+.card-bottom {
+  grid-area: 2/1/3/2;
+  display: flex;
+  gap: 3px;
   justify-content: space-between;
-  gap: 4px;
-  flex-wrap: wrap;
-  margin-top: auto;
-  padding-top: 6px;
-  border-top: 1px solid #46646b52;
+  align-items: center;
+  align-self: end;
+  margin-left: 64px;
+  pointer-events: none;
 }
 .added-date {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0 4px;
-  color: #35515e;
-  font-size: 11px;
+  font: 9px/1.25 var(--mono);
+  color: #d0e3e9;
 }
 .date-prefix {
-  font-weight: 600;
+  display: none;
 }
 .actions {
   display: flex;
-  gap: 3px;
+  pointer-events: auto;
 }
 .actions .icon-button {
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  background: #edf7f794;
-  color: #284c5a;
-  box-shadow: inset 0 1px 1px #fff;
+  width: 28px;
+  height: 30px;
+  color: #f2f9fa;
+  background: transparent;
 }
-.actions .icon-button:hover,
-.actions .icon-button:focus-visible {
-  background: #fff;
-}
-.actions [data-action='delete']:hover {
-  color: #833d44;
+.actions .icon-button:hover {
+  background: #ffffff29;
 }
 .actions .icon {
-  width: 14px;
-  height: 14px;
+  width: 13px;
+  height: 13px;
 }
-.latest-image.portrait-source img {
-  object-fit: contain;
-  background: linear-gradient(100deg, #274854, #183844);
-}
-@media (max-width: 650px) {
-  .open-card > .artwork {
-    border-radius: 10px;
+@media (pointer: coarse) {
+  .poster-card {
+    flex-basis: 222px;
+  }
+  .actions .icon-button {
+    width: 38px;
+    height: 40px;
   }
   .print-label {
-    padding: 11px 0 7px;
-  }
-  .score-badge {
-    right: 6px;
-    top: 6px;
-    padding: 3px 6px;
-  }
-  .date-prefix {
-    display: none;
-  }
-  .added-date {
-    font-size: 10px;
+    padding-bottom: 42px;
   }
 }

@@ -83,7 +83,7 @@
     </div>
     <header class="site-header">
       <div class="header-inner">
-        <a class="brand pane glass-rail" href="#opening" aria-label="Aftercredits home">
+        <a class="brand" href="#opening" aria-label="Aftercredits home">
           <svg class="brand-symbol" viewBox="0 0 54 56" aria-hidden="true">
             <use class="splice-upper" href="./assets/brand/aftercredits.svg#upper-frame" />
             <use class="splice-lower" href="./assets/brand/aftercredits.svg#lower-frame" />
@@ -95,11 +95,33 @@
             </svg>
           </span>
         </a>
-        <nav class="pane glass-rail" aria-label="Journal navigation">
+        <div class="stats" aria-label="Collection overview">
+          <div class="stat">
+            <div>
+              <svg class="icon"><use href="#film" /></svg><strong id="total">00</strong>
+            </div>
+            <span>Titles watched</span>
+          </div>
+          <div class="stat">
+            <div>
+              <svg class="icon"><use href="#star" /></svg><strong id="average">—</strong>
+            </div>
+            <span>Avg. rating</span>
+          </div>
+        </div>
+        <nav class="dock pane glass-rail" aria-label="Journal navigation">
           <a href="#collection" aria-label="Journal collection"
             ><svg class="icon"><use href="#journal" /></svg><span>Journal</span></a
           >
-          <button type="button" data-add>
+          <div class="section-tabs" role="group" aria-label="Collection section">
+            <button type="button" data-section="movie" aria-pressed="true">
+              <svg class="icon"><use href="#film" /></svg>Movies <span id="movie-count">0</span>
+            </button>
+            <button type="button" data-section="tv" aria-pressed="false">
+              <svg class="icon"><use href="#tv" /></svg>TV Series <span id="tv-count">0</span>
+            </button>
+          </div>
+          <button type="button" class="dock-add" data-add>
             <svg class="icon"><use href="#plus" /></svg><span>Add a title</span>
           </button>
         </nav>
@@ -107,49 +129,59 @@
     </header>
     <main class="journal">
       <section class="opening" id="opening" aria-labelledby="headline">
-        <div class="opening-copy">
-          <p class="eyebrow"><span></span>Personal watch journal</p>
+        <div class="stage-copy">
+          <p class="eyebrow" id="stage-kicker">Personal watch journal</p>
           <h1 id="headline">
-            <span>Beyond <i>the</i></span> <em>frame<span class="headline-stop">.</span></em>
+            Screening <em>room<span>.</span></em>
           </h1>
-          <p class="intro">Keep the movies and series that stay with you.</p>
-          <button class="button primary hero-add" data-add>
-            <svg class="icon"><use href="#plus" /></svg>Add a title
-          </button>
+          <p id="stage-description">Keep the movies and series that stay with you.</p>
+          <div class="stage-commands">
+            <button class="button primary" id="stage-open" data-add>
+              <svg class="icon" aria-hidden="true"><use href="#plus" /></svg
+              ><span>Add a title</span>
+            </button>
+            <span id="stage-score" hidden
+              ><span class="sr-only">Your rating </span
+              ><svg class="icon" aria-hidden="true"><use href="#star" /></svg><strong></strong
+              ><small>/ 10</small></span
+            >
+            <button
+              type="button"
+              id="return-latest"
+              aria-haspopup="dialog"
+              aria-controls="detail-dialog"
+              hidden
+            >
+              Latest title
+            </button>
+          </div>
         </div>
-        <div class="viewer">
-          <div class="viewer-frame pane">
-            <div class="viewer-aperture">
-              <span class="view-corners" aria-hidden="true"></span>
-              <button
-                type="button"
-                id="latest"
-                aria-haspopup="dialog"
-                aria-controls="detail-dialog"
-                aria-expanded="false"
-                hidden
-              >
-                <span class="latest-image" aria-hidden="true"></span>
-                <span class="latest-caption"><small></small><strong></strong></span>
-                <span class="view-arrow" aria-hidden="true"
-                  ><svg class="icon"><use href="#next" /></svg
-                ></span>
-              </button>
-            </div>
-            <div class="stats" aria-label="Collection overview">
-              <div class="stat">
-                <div>
-                  <svg class="icon"><use href="#film" /></svg><strong id="total">00</strong>
-                </div>
-                <span>Titles watched</span>
-              </div>
-              <div class="stat">
-                <div>
-                  <svg class="icon"><use href="#star" /></svg><strong id="average">—</strong>
-                </div>
-                <span>Avg. rating</span>
-              </div>
-            </div>
+        <div class="projector" role="group" aria-label="Collection poster stage">
+          <p class="sr-only" id="stage-status" role="status" aria-atomic="true"></p>
+          <div class="stage-light" aria-hidden="true"></div>
+          <div class="stage-space">
+            <div class="ribbon" aria-hidden="true"></div>
+            <button type="button" class="mount" data-slot="left" data-step="-1" hidden></button>
+            <button
+              type="button"
+              class="mount"
+              data-slot="center"
+              id="latest"
+              aria-haspopup="dialog"
+              aria-controls="detail-dialog"
+              aria-expanded="false"
+              hidden
+            ></button>
+            <button type="button" class="mount" data-slot="right" data-step="1" hidden></button>
+          </div>
+          <div class="shuttle pane" role="group" aria-label="Browse posters" hidden>
+            <button type="button" data-step="-1" aria-label="Previous poster">
+              <svg class="icon" aria-hidden="true"><use href="#next" /></svg>
+            </button>
+            <output aria-live="off" id="stage-index"></output>
+            <button type="button" data-step="1" aria-label="Next poster">
+              <svg class="icon" aria-hidden="true"><use href="#next" /></svg>
+            </button>
           </div>
         </div>
       </section>
@@ -157,16 +189,12 @@
         <div class="archive-head">
           <div class="journal-index">
             <h2 id="collection-title">My collection</h2>
-            <div
-              class="section-tabs pane glass-controls"
-              role="group"
-              aria-label="Collection section"
-            >
-              <button type="button" data-section="movie" aria-pressed="true">
-                <svg class="icon"><use href="#film" /></svg>Movies <span id="movie-count">0</span>
+            <div class="strip-controls" role="group" aria-label="Scroll collection" hidden>
+              <button type="button" data-scroll="-1" aria-label="Earlier titles">
+                <svg class="icon"><use href="#next" /></svg>
               </button>
-              <button type="button" data-section="tv" aria-pressed="false">
-                <svg class="icon"><use href="#tv" /></svg>TV Series <span id="tv-count">0</span>
+              <button type="button" data-scroll="1" aria-label="More titles">
+                <svg class="icon"><use href="#next" /></svg>
               </button>
             </div>
           </div>
@@ -217,34 +245,35 @@
       height="269"
       alt=""
     />
-    <dialog id="editor" class="pane glass-sheet" aria-labelledby="editor-heading">
+    <dialog id="editor" aria-labelledby="editor-heading">
       <form id="movie-form" novalidate>
-        <header class="sheet-head">
-          <h2 id="editor-heading">Add a title</h2>
-          <fieldset id="add-type" class="media-selector">
-            <legend class="sr-only">Collection</legend>
-            <label
-              ><input type="radio" name="media-type" value="movie" checked /><span
-                ><svg class="icon"><use href="#film" /></svg>Movies</span
-              ></label
-            >
-            <label
-              ><input type="radio" name="media-type" value="tv" /><span
-                ><svg class="icon"><use href="#tv" /></svg>TV Series</span
-              ></label
-            >
-          </fieldset>
-          <button
-            type="button"
-            class="icon-button close-button"
-            data-dismiss
-            aria-label="Close entry form"
-          >
-            <svg class="icon"><use href="#x" /></svg>
-          </button>
-        </header>
         <div class="editor-body">
-          <div class="catalog-column">
+          <div class="catalog-column pane">
+            <header class="sheet-head">
+              <h2 id="editor-heading">Add a title</h2>
+              <fieldset id="add-type" class="media-selector">
+                <legend class="sr-only">Collection</legend>
+                <label
+                  ><input type="radio" name="media-type" value="movie" checked /><span
+                    ><svg class="icon"><use href="#film" /></svg>Movies</span
+                  ></label
+                >
+                <label
+                  ><input type="radio" name="media-type" value="tv" /><span
+                    ><svg class="icon"><use href="#tv" /></svg>TV Series</span
+                  ></label
+                >
+              </fieldset>
+              <button
+                type="button"
+                class="icon-button close-button"
+                data-dismiss
+                aria-label="Close entry form"
+              >
+                <svg class="icon"><use href="#x" /></svg>
+              </button>
+            </header>
+
             <div id="add-options">
               <div class="mode-switch" role="group" aria-label="Entry method">
                 <button type="button" id="lookup-mode">Search TMDB</button>
@@ -356,7 +385,7 @@
         </div>
       </form>
     </dialog>
-    <dialog id="detail-dialog" class="pane glass-sheet" aria-labelledby="detail-title">
+    <dialog id="detail-dialog" aria-labelledby="detail-title">
       <button
         type="button"
         class="icon-button close-button detail-close"
@@ -366,16 +395,14 @@
         <svg class="icon"><use href="#x" /></svg>
       </button>
       <article class="detail-scroll">
-        <div class="detail-stage">
-          <div class="detail-hero" hidden></div>
-          <div id="detail-poster"></div>
+        <div class="detail-hero" hidden></div>
+        <div id="detail-poster"></div>
+        <div class="detail-sheet pane">
           <header class="detail-heading">
             <div class="field-label" id="detail-type"></div>
             <h2 id="detail-title"></h2>
             <p id="detail-original" hidden></p>
           </header>
-        </div>
-        <div class="detail-sheet">
           <div class="detail-notes">
             <p id="detail-description"></p>
             <dl id="detail-facts"></dl>

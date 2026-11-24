@@ -40,10 +40,10 @@ export function artwork(path, size, type, title) {
   if (src) {
     const img = new Image();
     img.alt = '';
-    img.loading = size === 'w342' ? 'lazy' : 'eager';
+    img.loading = 'lazy';
     img.decoding = 'async';
     img.addEventListener('error', () => img.remove(), { once: true });
-    const higherDensity = { w185: 'w342', w342: 'w780', w780: 'w1280' }[size];
+    const higherDensity = { w92: 'w185', w185: 'w342', w342: 'w780', w780: 'w1280' }[size];
     if (higherDensity) {
       const larger = imageUrl(path, higherDensity);
       img.srcset = src + ' 1x, ' + larger + ' 2x';
@@ -68,7 +68,7 @@ export function movieRow(movie) {
   open.setAttribute('aria-haspopup', 'dialog');
   open.setAttribute('aria-controls', 'detail-dialog');
   open.setAttribute('aria-expanded', 'false');
-  const poster = artwork(movie.metadata?.posterPath, 'w342', movie.mediaType, movie.title);
+  const poster = artwork(movie.metadata?.posterPath, 'w92', movie.mediaType, movie.title);
   const badge = el('span', 'score-badge');
   badge.append(el('span', 'sr-only', 'Your rating '), icon('star'), movie.rating.toFixed(1));
   poster.append(badge);
@@ -108,26 +108,6 @@ export function resultButton(item, selected = false) {
   if (!selected) button.append(icon('next'));
   return button;
 }
-export function presentLatest(button, entry) {
-  button.hidden = !entry;
-  const stage = button.querySelector('.latest-image');
-  stage.replaceChildren();
-  if (!entry) return;
-  const meta = entry.metadata;
-  const wide = Boolean(imageUrl(meta?.backdropPath, 'w780'));
-  stage.classList.toggle('portrait-source', !wide && Boolean(meta?.posterPath));
-  stage.append(
-    artwork(
-      wide ? meta.backdropPath : meta?.posterPath,
-      wide ? 'w780' : 'w185',
-      entry.mediaType,
-      entry.title
-    )
-  );
-  button.querySelector('small').textContent =
-    entry.mediaType === 'tv' ? 'Latest series' : 'Latest movie';
-  button.querySelector('strong').textContent = entry.title;
-}
 export function emptyState(searching, type) {
   const panel = el('div', searching ? 'no-match' : 'empty');
   const movie = type === 'movie';
@@ -148,9 +128,6 @@ export function emptyState(searching, type) {
     button.dataset.clear = '';
     button.textContent = 'Clear search';
   } else {
-    const art = el('div', 'empty-art');
-    art.setAttribute('aria-hidden', 'true');
-    panel.append(art);
     button.dataset.add = '';
     button.append(icon('plus'), movie ? 'Add a movie' : 'Add a series');
   }
@@ -185,7 +162,7 @@ export function presentDetails(dialog, entry) {
     image.src = backdrop;
   }
   const poster = get('detail-poster');
-  poster.replaceChildren(artwork(meta.posterPath, 'w185', entry.mediaType, entry.title));
+  poster.replaceChildren(artwork(meta.posterPath, 'w342', entry.mediaType, entry.title));
   get('detail-type').replaceChildren(icon(series ? 'tv' : 'film'), series ? 'TV series' : 'Movie');
   get('detail-title').textContent = entry.title;
   const original = get('detail-original');

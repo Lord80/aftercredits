@@ -1,5 +1,3 @@
-import { alignLens } from './viewfinder.js';
-
 const reduced = matchMedia('(prefers-reduced-motion: reduce)');
 const animate = () => window.gsap && !reduced.matches && !document.hidden;
 
@@ -13,22 +11,12 @@ reduced.addEventListener('change', (event) => {
 
 export function entrance() {
   if (!animate()) return;
-  const sequence = gsap.timeline({
-    onComplete: alignLens,
-    defaults: { ease, clearProps: 'transform,opacity' },
-  });
+  const sequence = gsap.timeline({ defaults: { ease, clearProps: 'transform,opacity' } });
   sequence
-    .from('.plaza', { scale: 1.025, xPercent: 0.35, duration: 1.4 }, 0)
-    .from(
-      ['.eyebrow', '.opening h1 > span', '.opening h1 em', '.intro', '.hero-add'],
-      { opacity: 0, y: 14, stagger: 0.055, duration: 0.52 },
-      0.035
-    )
-    .from(
-      ['.viewer', '.archive-head'],
-      { opacity: 0.35, y: 14, scale: 0.97, stagger: 0.06, duration: 0.54 },
-      0.16
-    );
+    .from('.plaza', { scale: 1.035, duration: 1.15 }, 0)
+    .from('.stage-copy', { x: -14, opacity: 0.35, duration: 0.48 }, 0)
+    .from('.stage-space', { y: 18, scale: 0.94, duration: 0.72 }, 0)
+    .from('.archive', { y: 12, opacity: 0.5, duration: 0.48 }, 0.09);
 }
 
 export function accentRating(node) {
@@ -41,6 +29,7 @@ export function accentRating(node) {
 }
 
 export function positions(list) {
+  if (!animate()) return new Map();
   return new Map(
     [...list.querySelectorAll('[data-film]')].map((row) => [
       row.dataset.film,
@@ -58,7 +47,13 @@ export function reveal(list, previous) {
   let entered = 0;
   rows.forEach((row, index) => {
     const box = boxes[index];
-    if (box.bottom < 0 || box.top > window.innerHeight + 120) return;
+    if (
+      box.bottom < 0 ||
+      box.top > window.innerHeight + 120 ||
+      box.right < 0 ||
+      box.left > innerWidth + 24
+    )
+      return;
     const prior = previous.get(row.dataset.film);
     if (prior) {
       const x = prior.left - box.left,
@@ -128,47 +123,80 @@ export function statistic(node, value, format) {
   });
 }
 
-export function showDialog(dialog, opener) {
-  dialog.showModal();
-  if (!animate()) return;
-  const from = opener.getBoundingClientRect();
-  const to = dialog.getBoundingClientRect();
-  const clamp = gsap.utils.clamp;
-  // Expand toward the chosen object while keeping the readable pane close to its final position.
-  const x = clamp(-36, 36, (from.left + from.width / 2 - to.left - to.width / 2) * 0.14);
-  const y = clamp(-26, 26, (from.top + from.height / 2 - to.top - to.height / 2) * 0.14);
-  gsap.fromTo(
-    dialog,
-    { x, y, opacity: 0.3, scale: 0.94 },
-    {
-      x: 0,
-      y: 0,
-      opacity: 1,
-      scale: 1,
-      duration: 0.32,
-      ease: 'power3.out',
-      clearProps: 'all',
-      overwrite: true,
-    }
-  );
+function posterOffset(opener, poster) {
+  const candidate = opener?.dataset.targetFilm
+    ? document.querySelector('[data-film="' + CSS.escape(opener.dataset.targetFilm) + '"] .artwork')
+    : (opener?.querySelector('.artwork') ?? document.querySelector('#latest .artwork'));
+  const source = candidate?.getBoundingClientRect();
+  const target = poster.getBoundingClientRect();
+  if (
+    !source?.width ||
+    !target.width ||
+    source.bottom <= 0 ||
+    source.top >= innerHeight ||
+    source.left >= innerWidth ||
+    source.right <= 0
+  )
+    return { y: 18, scale: 0.91 };
+  return {
+    x: source.left - target.left + (source.width - target.width) / 2,
+    y: source.top - target.top + (source.height - target.height) / 2,
+    scaleX: source.width / target.width,
+    scaleY: source.height / target.height,
+  };
 }
 
-export function hideDialog(dialog) {
+export function showDialog(dialog, opener) {
+  dialog.showModal();
+  if (dialog.id === 'detail-dialog') dialog.querySelector('.detail-scroll').scrollTop = 0;
+  if (!animate()) return;
+  const timeline = gsap.timeline({ defaults: { ease, clearProps: 'transform,opacity' } });
+  if (dialog.id === 'detail-dialog') {
+    const poster = dialog.querySelector('#detail-poster');
+    timeline
+      .from(poster, { ...posterOffset(opener, poster), duration: 0.46 }, 0)
+      .from(
+        dialog.querySelector('.detail-sheet'),
+        { x: 22, y: 8, opacity: 0, duration: 0.35 },
+        0.07
+      )
+      .from(dialog.querySelector('.detail-hero'), { opacity: 0, duration: 0.46 }, 0);
+  } else if (dialog.id === 'editor') {
+    timeline
+      .from(
+        dialog.querySelector('.catalog-column'),
+        { y: 38, scale: 0.92, opacity: 0.3, duration: 0.36 },
+        0
+      )
+      .from(
+        dialog.querySelector('.rating-bay'),
+        { y: 24, rotation: -2, scale: 0.9, opacity: 0.2, duration: 0.4 },
+        0.035
+      )
+      .from(dialog.querySelector('.editor-foot'), { y: 12, opacity: 0.3, duration: 0.24 }, 0.08);
+  } else timeline.from(dialog, { scale: 0.95, y: 8, opacity: 0.4, duration: 0.2 }, 0);
+}
+
+export function hideDialog(dialog, opener) {
   if (!animate()) {
     dialog.close();
     return Promise.resolve();
   }
-  return new Promise((resolve) =>
-    gsap.to(dialog, {
-      y: 9,
-      opacity: 0,
-      duration: 0.15,
-      overwrite: true,
-      onComplete() {
+  const poster = dialog.id === 'detail-dialog' && dialog.querySelector('#detail-poster');
+  return new Promise((resolve) => {
+    const timeline = gsap.timeline({
+      onComplete: () => {
         dialog.close();
-        gsap.set(dialog, { clearProps: 'all' });
+        gsap.set(dialog, { clearProps: 'transform,opacity' });
+        if (poster) gsap.set(poster, { clearProps: 'transform' });
         resolve();
       },
-    })
-  );
+    });
+    if (poster) {
+      gsap.getTweensOf(poster).forEach((tween) => tween.totalProgress(1).kill());
+      timeline
+        .to(poster, { ...posterOffset(opener, poster), duration: 0.26, ease: 'power2.inOut' }, 0)
+        .to(dialog, { opacity: 0, duration: 0.17 }, 0.09);
+    } else timeline.to(dialog, { opacity: 0, y: 10, duration: 0.16, ease: 'power2.out' });
+  });
 }

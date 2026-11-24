@@ -1,4 +1,4 @@
-"""Optional Chromium regression check for the media switch and catalog selection."""
+"""Chromium regression checks for catalog choice, persistence and poster navigation."""
 
 import json
 import shutil
@@ -71,7 +71,7 @@ def check_picker(page):
     )
 
 
-def check_viewfinder(page):
+def check_featured_title(page):
     latest = page.locator("#latest")
     expect(latest).to_be_hidden()
     page.locator('[data-section="tv"]').click()
@@ -98,6 +98,41 @@ def check_viewfinder(page):
     expect(latest).to_contain_text("Manual series")
 
 
+def check_stage_browsing(page):
+    page.locator('[data-section="movie"]').click()
+    for title in ["First frame", "Second frame", "Third frame"]:
+        page.locator(".header-inner [data-add]").click()
+        page.locator("#manual-mode").click()
+        page.locator("#title").fill(title)
+        page.locator("#save").click()
+        expect(page.locator("#headline")).to_have_text(title)
+
+    read_archive = "localStorage.getItem('aftercredits.collection.v2')"
+    raw = page.evaluate(read_archive)
+    expect(page.locator(".mount:visible")).to_have_count(3)
+    page.get_by_role("button", name="Next poster", exact=True).click()
+    expect(page.locator("#headline")).to_have_text("Second frame")
+    page.locator("#return-latest").click()
+    expect(page.locator("#detail-title")).to_have_text("Third frame")
+    page.keyboard.press("Escape")
+    page.locator("#latest").press("ArrowRight")
+    expect(page.locator("#headline")).to_have_text("First frame")
+    page.locator("#latest").press("ArrowRight")
+    expect(page.locator("#headline")).to_have_text("Third frame")
+    page.locator(".open-card").first.focus()
+    page.keyboard.press("ArrowRight")
+    expect(page.locator(".open-card").nth(1)).to_be_focused()
+    expect(page.locator("#headline")).to_have_text("Second frame")
+    page.keyboard.press("Enter")
+    expect(page.locator("#detail-title")).to_have_text("Second frame")
+    page.keyboard.press("Escape")
+    expect(page.locator(".open-card").nth(1)).to_be_focused()
+    page.locator("#query").fill("First frame")
+    expect(page.locator(".mount:visible")).to_have_count(1)
+    expect(page.locator(".shuttle")).to_be_hidden()
+    assert page.evaluate(read_archive) == raw
+
+
 if __name__ == "__main__":
     root = Path(__file__).resolve().parents[1]
     with ThreadingHTTPServer(("127.0.0.1", 0), partial(QuietHandler, directory=str(root))) as server:
@@ -113,8 +148,9 @@ if __name__ == "__main__":
                 page = ctx.new_page()
                 page.goto(f"http://127.0.0.1:{server.server_port}/")
                 check_picker(page)
-                check_viewfinder(page)
+                check_featured_title(page)
+                check_stage_browsing(page)
                 browser.close()
         finally:
             server.shutdown()
-    print("Passed picker, saved half-point score and per-collection viewfinder checks.")
+    print("Passed catalog, half-point persistence, poster stage and filmstrip navigation checks.")
