@@ -13,15 +13,15 @@ export function entrance() {
   if (!animate()) return;
   const sequence = gsap.timeline({ defaults: { ease, clearProps: 'transform,opacity' } });
   sequence
-    .from('.hero-art', { scale: 1.025, xPercent: 0.35, duration: 1.4 }, 0)
-    .from('.header-inner', { opacity: 0, y: -5, duration: 0.32 }, 0)
+    .from('.plaza', { scale: 1.025, xPercent: 0.35, duration: 1.4 }, 0)
+    .from('.brand', { opacity: 0, y: -5, duration: 0.32 }, 0)
     .from(
-      ['.eyebrow', '.hero h1 span', '.hero h1 em', '.hero p'],
+      ['.eyebrow', '.opening h1 span', '.opening h1 em', '.intro', '.hero-add'],
       { opacity: 0, y: 14, stagger: 0.055, duration: 0.52 },
       0.035
     )
     .from(
-      ['.collection-top', '.toolbar'],
+      ['.journal-index', '.toolbar'],
       { opacity: 0, y: 7, stagger: 0.045, duration: 0.4 },
       0.16
     );
@@ -89,7 +89,6 @@ export function removeFrame(row) {
     left: bounds.left + 'px',
     width: bounds.width + 'px',
     height: bounds.height + 'px',
-    background: 'var(--bg)',
     zIndex: '1',
   });
   document.body.append(ghost);

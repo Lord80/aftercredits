@@ -20,9 +20,22 @@ function el(tag, cls, text) {
   if (text) node.textContent = text;
   return node;
 }
-export function artwork(path, size, type) {
+export function artwork(path, size, type, title) {
   const frame = el('div', 'artwork');
-  frame.append(icon(type === 'tv' ? 'tv' : 'film'));
+  if (title) {
+    const initials = title
+      .trim()
+      .split(/\s+/u)
+      .slice(0, 2)
+      .map((word) => [...word][0])
+      .join('');
+    const imprint = el('span', 'bookplate', initials.toLocaleUpperCase());
+    imprint.setAttribute('aria-hidden', 'true');
+    frame.dataset.stock = String(title.codePointAt(0) % 4);
+    frame.append(imprint);
+  } else {
+    frame.append(icon(type === 'tv' ? 'tv' : 'film'));
+  }
   const src = imageUrl(path, size);
   if (src) {
     const img = new Image();
@@ -47,7 +60,7 @@ export function movieRow(movie) {
   card.dataset.film = movie.id;
   const open = el('button', 'open-card');
   open.dataset.action = 'details';
-  const poster = artwork(movie.metadata?.posterPath, 'w342', movie.mediaType);
+  const poster = artwork(movie.metadata?.posterPath, 'w342', movie.mediaType, movie.title);
   const badge = el('span', 'score-badge');
   badge.append(el('span', 'sr-only', 'Your rating '), icon('star'), movie.rating.toFixed(1));
   poster.append(badge);
@@ -59,7 +72,9 @@ export function movieRow(movie) {
     'poster-caption',
     [year, movie.mediaType === 'tv' ? 'TV series' : 'Movie'].filter(Boolean).join(' · ')
   );
-  open.append(el('span', 'sr-only', 'View title details'), poster, caption, title);
+  const label = el('div', 'print-label');
+  label.append(caption, title);
+  open.append(el('span', 'sr-only', 'View title details'), poster, label);
   const bottom = el('div', 'card-bottom');
   const time = el('time', '', dateLabel.format(new Date(movie.added)));
   time.dateTime = movie.added;
@@ -90,13 +105,13 @@ export function emptyState(searching, type) {
   const heading = searching
     ? 'No matching titles.'
     : movie
-      ? 'Your first movie awaits.'
-      : 'Your first series awaits.';
+      ? 'Your first screening.'
+      : 'Your first series.';
   const copy = searching
     ? 'Try a different title or clear your search.'
     : movie
-      ? 'Save a movie and give it a rating to begin your collection.'
-      : 'Add a show you’ve watched and give it your own rating.';
+      ? 'Give a movie a rating to start your collection.'
+      : 'Save a series you’ve watched and give it a rating.';
   content.append(el('h3', '', heading), el('p', '', copy));
   const button = el('button', 'button ' + (searching ? 'secondary' : 'empty-button'));
   if (searching) {

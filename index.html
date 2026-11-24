@@ -19,6 +19,7 @@
     />
 
     <link rel="stylesheet" href="./css/site.css" />
+    <link rel="stylesheet" href="./css/street.css" />
     <script defer src="./assets/vendor/gsap.min.js"></script>
     <script type="module" src="./js/app.js"></script>
   </head>
@@ -70,42 +71,59 @@
       <symbol id="check" viewBox="0 0 24 24"><path d="m5 12 4.5 4.5L19 7" /></symbol>
     </svg>
     <a class="skip" href="#collection">Skip to collection</a>
+    <div class="world" aria-hidden="true">
+      <picture class="plaza"
+        ><source
+          media="(max-width:700px) and (orientation:portrait)"
+          srcset="./assets/images/street/plaza-portrait.webp" />
+        <img
+          fetchpriority="high"
+          src="./assets/images/street/plaza.webp"
+          alt=""
+          width="1536"
+          height="1024"
+      /></picture>
+      <div class="daylight"></div>
+      <div class="sea-mist"></div>
+      <div class="rain-light"><i></i><i></i><i></i></div>
+    </div>
     <header class="site-header">
-      <div class="wrap header-inner">
-        <a class="brand" href="./" aria-label="Aftercredits home"
-          ><svg aria-hidden="true"><use href="#reel" /></svg>AFTERCREDITS</a
+      <div class="header-inner pane">
+        <a class="brand" href="#opening" aria-label="Aftercredits home"
+          ><svg aria-hidden="true"><use href="#reel" /></svg><span>AFTERCREDITS</span></a
         >
-        <nav aria-label="Main navigation">
-          <a class="nav-link" href="#collection">My collection</a>
-          <button class="button primary" data-add>
-            <svg class="icon"><use href="#plus" /></svg>Add a title
+        <nav aria-label="Journal navigation">
+          <a href="#collection" aria-label="Journal collection"
+            ><svg class="icon"><use href="#film" /></svg><span>Journal</span></a
+          >
+          <button type="button" data-add aria-label="Add title">
+            <svg class="icon"><use href="#plus" /></svg><span>Add title</span>
           </button>
         </nav>
       </div>
     </header>
-    <main>
-      <section class="hero" aria-labelledby="headline">
-        <picture class="hero-art" aria-hidden="true">
-          <source media="(max-width: 620px)" srcset="./assets/images/lakeside-morning-small.webp" />
-          <img
-            src="./assets/images/lakeside-morning.webp"
-            alt=""
-            width="2160"
-            height="720"
-            fetchpriority="high"
-          />
-        </picture>
-        <div class="morning-mist" aria-hidden="true"></div>
-        <div class="rain-light" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
-        <div class="wrap hero-inner">
-          <div class="eyebrow"><span></span>Personal watch journal</div>
-          <h1 id="headline"><span>After the</span> <em>last frame.</em></h1>
-          <p>A place for the movies and series that stay with you.</p>
+    <main class="journal">
+      <section class="opening" id="opening" aria-labelledby="headline">
+        <div class="opening-copy">
+          <p class="eyebrow"><span></span>Personal watch journal</p>
+          <h1 id="headline"><span>Beyond the</span> <em>frame.</em></h1>
+          <p class="intro">Keep the movies and series that stay with you.</p>
+          <button class="button primary hero-add" data-add>
+            <svg class="icon"><use href="#plus" /></svg>Add a title
+          </button>
         </div>
       </section>
-      <section class="wrap collection" id="collection" aria-labelledby="collection-title">
-        <div class="collection-top">
+      <section id="collection" class="archive" aria-labelledby="collection-title">
+        <div class="journal-index pane">
           <h2 id="collection-title">My collection</h2>
+          <div class="section-tabs" role="group" aria-label="Collection section">
+            <button type="button" data-section="movie" aria-pressed="true">
+              <svg class="icon"><use href="#film" /></svg>Movies <span id="movie-count">0</span>
+            </button>
+            <button type="button" data-section="tv" aria-pressed="false">
+              <svg class="icon"><use href="#tv" /></svg>TV Series <span id="tv-count">0</span>
+            </button>
+          </div>
           <div class="stats" aria-label="Collection overview">
             <div class="stat">
               <div>
@@ -121,50 +139,52 @@
             </div>
           </div>
         </div>
-        <p class="notice" id="storage-note" role="status" hidden></p>
-        <div class="toolbar">
-          <div class="section-tabs" role="group" aria-label="Collection section">
-            <button type="button" data-section="movie" aria-pressed="true">
-              <svg class="icon"><use href="#film" /></svg>Movies <span id="movie-count">0</span>
-            </button>
-            <button type="button" data-section="tv" aria-pressed="false">
-              <svg class="icon"><use href="#tv" /></svg>TV Series <span id="tv-count">0</span>
-            </button>
+        <div class="gallery">
+          <div class="toolbar pane">
+            <label class="search"
+              ><svg class="icon"><use href="#search" /></svg
+              ><input
+                type="search"
+                id="query"
+                aria-label="Search collection by title"
+                placeholder="Search collection…"
+                maxlength="300"
+            /></label>
+            <label class="sort"
+              ><svg class="icon"><use href="#sort" /></svg
+              ><select id="order" aria-label="Sort titles">
+                <option value="recent">Recently added</option>
+                <option value="highest">Highest rating</option>
+                <option value="lowest">Lowest rating</option>
+                <option value="alpha">Alphabetical</option></select
+              ><svg class="icon chevron"><use href="#down" /></svg
+            ></label>
           </div>
-          <label class="search"
-            ><svg class="icon"><use href="#search" /></svg
-            ><input
-              type="search"
-              id="query"
-              aria-label="Search collection by title"
-              placeholder="Search collection…"
-              maxlength="300"
-          /></label>
-          <label class="sort"
-            ><svg class="icon"><use href="#sort" /></svg
-            ><select id="order" aria-label="Sort titles">
-              <option value="recent">Recently added</option>
-              <option value="highest">Highest rating</option>
-              <option value="lowest">Lowest rating</option>
-              <option value="alpha">Alphabetical</option></select
-            ><svg class="icon chevron"><use href="#down" /></svg
-          ></label>
+          <p class="notice" id="storage-note" role="status" hidden></p>
+          <div id="results"></div>
+          <p id="result-status" class="sr-only" role="status"></p>
         </div>
-        <div id="results"></div>
-        <p id="result-status" class="sr-only" role="status"></p>
       </section>
     </main>
-    <footer class="wrap footer">
-      <div>
-        <svg><use href="#reel" /></svg>AFTERCREDITS
-      </div>
+    <footer class="footer">
+      <a class="footer-brand" href="#opening"
+        ><svg aria-hidden="true"><use href="#reel" /></svg>AFTERCREDITS</a
+      >
       <div class="attribution">
         <a href="https://www.themoviedb.org/" aria-label="The Movie Database"
-          ><img src="./assets/tmdb.svg" alt="TMDB" width="47" height="27"
+          ><img src="./assets/tmdb.svg" alt="TMDB" width="44" height="25"
         /></a>
         <p>This product uses the TMDB API but is not endorsed or certified by TMDB.</p>
       </div>
     </footer>
+    <img
+      class="near-flowers"
+      aria-hidden="true"
+      src="./assets/images/street/hydrangea.webp"
+      width="400"
+      height="269"
+      alt=""
+    />
     <dialog id="editor" aria-labelledby="editor-heading">
       <form id="movie-form" class="sheet" novalidate>
         <div class="sheet-head entry-heading">
