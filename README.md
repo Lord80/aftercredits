@@ -2,13 +2,15 @@
 
 A personal watch journal for movies and TV series. The static frontend runs on GitHub Pages. A small Cloudflare Worker handles optional TMDB catalog requests. Collection data stays in the browser.
 
+See the [Phase 2A visual walkthrough](docs/phase-2a/) for the previous layout, desktop and phone screenshots, and browser test results.
+
 ## What works
 
 | Capability | Availability |
 | --- | --- |
 | Separate Movies and TV Series collections, manual entry, half-point ratings, editing, confirmed deletion, search, four sort orders, totals and average rating | Available on first visit |
 | Migration from the original film journal, persistent personal ratings, cached title details, cross-tab updates | Available without an API connection |
-| Live catalog search, exact-title selection, official posters, and richer detail views | Connect the included Worker to TMDB as described below |
+| Live catalog search, exact-title selection, official posters, and richer detail views | Uses the public Worker configured in `js/config.js`. New deployments can follow the setup below. |
 | Filtering by genre, year, language, and rating | Planned. The data model already retains the relevant fields. |
 
 Choose **Movies** or **TV Series**, then **Add a title**. With the catalog connected, search by title, choose the correct poster and year, set your rating, and save. Anime films and series use the same two TMDB catalogs and can be searched by their original or translated names. **Enter manually** also works without TMDB. Open a saved card for its description, genres, release or first-air date, language, backdrop, and personal rating when available. The collection totals cover both sections.
@@ -46,7 +48,7 @@ On first use with an existing v1 archive, the app writes a v2 copy. Original IDs
 
 The combination of media type and TMDB ID identifies a catalog entry. Remakes can share a title, and a film and a series can share a numeric ID. Manual entries use normalized, case-insensitive title comparison within their section. Editing the personal display title preserves the original metadata snapshot and added date.
 
-Browsing, searching, editing, rating, and deleting saved entries work when TMDB is offline. If the details request fails after a successful catalog search, you can save the returned search record. Artwork falls back to a media-type illustration when the image is missing or unreachable. The app stores artwork paths, so viewing uncached images requires a connection. Browser profiles and origins have separate journals. Clearing site data removes the archive. Blocked or full storage switches the current tab to memory with a visible notice.
+Browsing, searching, editing, rating, and deleting saved entries work when TMDB is offline. If the details request fails after a successful catalog search, you can save the returned search record. Gallery cards display a typographic cover made from the title’s initials when a poster is missing or unreachable. The app stores artwork paths, so viewing uncached images requires a connection. Browser profiles and origins have separate journals. Clearing site data removes the archive. Blocked or full storage switches the current tab to memory with a visible notice.
 
 ## Implementation and verification
 
@@ -56,8 +58,8 @@ Browsing, searching, editing, rating, and deleting saved entries work when TMDB 
 - `worker/index.mjs` implements the proxy and maps TMDB’s movie and TV fields into a common shape.
 - Run `node --test tests/*.test.mjs` with Node 22.7 or newer for the storage and Worker contract tests. Test fixtures are isolated from the application and require no credential.
 
-Browser validation covered migration, CRUD in both sections, reload and full browser restart, cross-tab updates, failed artwork, unavailable storage, keyboard dialogs, and layouts from 320 to 1440 pixels. The search and details flow was tested through the Worker with an isolated upstream test fixture. Wrangler packaged the Worker successfully. Live TMDB verification requires the deployment and secret described above.
+Browser validation covered migration, CRUD in both sections, reload and full browser restart, cross-tab updates, failed artwork, unavailable storage, keyboard dialogs, and layouts from 320 to 1440 pixels. The search and details flow was tested through the Worker with an isolated upstream test fixture. Wrangler packaged the Worker successfully. During Phase 2A, cloud requests to the deployed Worker and the image CDN returned HTTP 403. The visual walkthrough records the local integration coverage.
 
-The lakeside morning panorama and spring ticket illustration are original artwork created for AFTERCREDITS. The site self-hosts Instrument Serif, DM Sans, IBM Plex Mono, and GSAP. Font licenses are in `assets/fonts`. [GSAP license](https://gsap.com/standard-license/)
+The desktop and portrait cinema street illustrations, hydrangeas and engraved camera were generated for AFTERCREDITS. The site self-hosts Instrument Serif, DM Sans, IBM Plex Mono, and GSAP. Font licenses are in `assets/fonts`. [GSAP license](https://gsap.com/standard-license/)
 
 This product uses the TMDB API but is not endorsed or certified by TMDB. Catalog artwork and metadata are supplied by TMDB and the respective rights holders. The interface includes the TMDB mark and attribution in its footer. [TMDB](https://www.themoviedb.org/)
