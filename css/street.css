@@ -4,7 +4,7 @@
   --gutter: clamp(24px, 3.8vw, 72px);
   --left: calc(var(--rail) + var(--gutter) + 20px);
   --paper: #fffaeb;
-  --print: #1c4b50;
+  --print: var(--brand-ink);
   --hairline: #284e5a42;
   --pane-edge: inset 0 1px 0 #fffffffa, inset 1px 0 0 #ffffffad, inset 0 -1px 0 #7d9b9f77;
   --pane-shadow: 0 14px 30px -16px #143d4966, 0 1px 3px #214a572a;
@@ -140,22 +140,80 @@
   padding: 18px 6px 12px;
 }
 .brand {
+  --letter-width: 167px;
+  --letter-height: calc(var(--letter-width) / 9);
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 23px;
-  color: var(--print);
+  gap: 13px;
+  color: var(--brand-ink);
+  fill: currentColor;
+  border-radius: 4px;
 }
-.brand svg {
-  width: 36px;
-  height: 36px;
-  color: var(--print);
+.brand-symbol {
+  display: block;
+  width: 41px;
+  height: 43px;
 }
-.brand span {
-  writing-mode: vertical-rl;
-  letter-spacing: 0.19em;
-  font-weight: 700;
-  font-size: 17px;
+.splice-light {
+  fill: var(--brand-light);
+}
+/* Give the rotated wordmark its own space on the rail. */
+.brand-lettering {
+  display: block;
+  width: var(--letter-height);
+  height: var(--letter-width);
+}
+.brand-lettering svg {
+  display: block;
+  width: var(--letter-width);
+  height: var(--letter-height);
+  transform-origin: top left;
+  transform: translateX(var(--letter-height)) rotate(90deg);
+}
+@media (prefers-reduced-motion: no-preference) {
+  .splice-upper {
+    animation: frame-open 0.6s var(--ease-out) backwards;
+  }
+  .splice-lower {
+    animation: frame-settle 0.64s var(--ease-out) backwards;
+  }
+  .splice-light {
+    animation: light-through 0.7s 0.06s var(--ease-out) backwards;
+  }
+  .brand-lettering use {
+    animation: name-reveal 0.64s 0.12s var(--ease-out) backwards;
+  }
+}
+@keyframes frame-open {
+  from {
+    transform: translate(-3px, 3px);
+  }
+}
+@keyframes frame-settle {
+  from {
+    transform: translate(4px, -3px);
+  }
+}
+@keyframes light-through {
+  from {
+    opacity: 0.25;
+    transform: translate(-5px, 3px);
+  }
+  64% {
+    opacity: 1;
+    transform: translate(1px, -0.6px);
+  }
+}
+@keyframes name-reveal {
+  from {
+    clip-path: inset(-5% 90% -5% -1%);
+    opacity: 0.4;
+  }
+  to {
+    clip-path: inset(-5% -1%);
+    opacity: 1;
+  }
 }
 .header-inner nav {
   display: grid;
@@ -215,38 +273,53 @@
   display: flex;
   align-items: center;
   gap: 10px;
-  font: 500 10px/1.5 var(--mono);
+  font: 400 10px/1.5 var(--mono);
   letter-spacing: 0.14em;
   text-transform: uppercase;
   color: #214e58;
 }
 .eyebrow span {
-  width: 29px;
-  height: 2px;
-  background: currentColor;
-  box-shadow: 8px 4px 0 -0.5px #32657280;
+  width: 24px;
+  height: 5px;
+  background: linear-gradient(
+    155deg,
+    currentColor 0 55%,
+    transparent 56% 62%,
+    var(--brand-light) 63%
+  );
+  clip-path: polygon(14% 0, 100% 0, 87% 100%, 0 100%);
 }
 .opening h1 {
   font-size: clamp(85px, 8.45vw, 140px);
-  line-height: 0.79;
-  letter-spacing: -0.047em;
+  line-height: 0.84;
+  letter-spacing: -0.043em;
   margin: 19px 0 17px;
-  color: #123e49;
+  margin-inline-start: -0.025em;
+  color: var(--brand-ink);
 }
-.opening h1 span,
-.opening h1 em {
+.opening h1 > span,
+.opening h1 > em {
   display: block;
+}
+.opening h1 i {
+  font-size: 0.51em;
+  letter-spacing: -0.025em;
+  vertical-align: 0.18em;
+}
+.headline-stop {
+  color: #a25532;
 }
 .opening h1 em {
   font-weight: 400;
   color: #23606b;
-  margin-left: 0.36em;
+  margin-left: 0.42em;
 }
 .intro {
   font-size: 15px;
   color: #233f4b;
   line-height: 1.55;
   max-width: 29ch;
+  text-wrap: pretty;
 }
 .hero-add {
   margin-top: 17px;
@@ -274,7 +347,7 @@
 }
 .journal-index h2 {
   font-size: clamp(32px, 2.85vw, 46px);
-  letter-spacing: -0.04em;
+  letter-spacing: -0.028em;
   line-height: 1.05;
   margin: 0 4px 19px;
 }
@@ -283,6 +356,7 @@
   gap: 6px;
 }
 .section-tabs button {
+  letter-spacing: 0.012em;
   display: flex;
   align-items: center;
   gap: 8px;
@@ -341,7 +415,8 @@
   color: #2a5e68;
 }
 .stat strong {
-  font: 400 25px/1 var(--serif);
+  font: 400 22px/1.12 var(--mono);
+  letter-spacing: -0.065em;
   font-variant-numeric: tabular-nums;
 }
 .stat > span {
@@ -604,7 +679,7 @@
 .score-badge .icon {
   width: 12px;
   height: 12px;
-  fill: #b47535;
+  fill: var(--brand-light);
   stroke: #925823;
 }
 .print-label {
@@ -612,14 +687,14 @@
 }
 .poster-caption {
   display: block;
-  color: #52615a;
-  font-size: 9px;
+  color: #42574e;
+  font-size: 10px;
   margin-bottom: 5px;
 }
 .poster-card h3 {
   font-size: clamp(25px, 2vw, 33px);
-  line-height: 1.04;
-  letter-spacing: -0.025em;
+  line-height: 1.09;
+  letter-spacing: -0.018em;
   overflow-wrap: anywhere;
 }
 .card-bottom {
@@ -672,13 +747,12 @@
   gap: 8px;
 }
 .footer-brand {
-  font-weight: 700;
-  font-size: 10px;
-  letter-spacing: 0.13em;
+  align-self: center;
 }
-.footer-brand svg {
-  width: 18px;
-  height: 18px;
+.footer-brand img {
+  display: block;
+  width: 138px;
+  height: auto;
 }
 .attribution {
   gap: 11px;
@@ -731,6 +805,12 @@
     bottom: -29px;
   }
 }
+/* A short landscape window uses the symbol alone to leave both rail actions in reach. */
+@media (min-width: 761px) and (max-height: 440px) {
+  .brand-lettering {
+    display: none;
+  }
+}
 @media (max-width: 760px) {
   :root {
     --left: 14px;
@@ -749,17 +829,20 @@
     --clear: #f2f8f0e8;
   }
   .brand {
+    --letter-width: clamp(116px, 34vw, 152px);
     flex-direction: row;
-    gap: 8px;
+    gap: 5px;
   }
-  .brand span {
-    writing-mode: horizontal-tb;
-    font-size: 15px;
-    letter-spacing: 0.1em;
+  .brand-symbol {
+    width: 32px;
+    height: 34px;
   }
-  .brand svg {
-    width: 27px;
-    height: 27px;
+  .brand-lettering {
+    width: var(--letter-width);
+    height: var(--letter-height);
+  }
+  .brand-lettering svg {
+    transform: none;
   }
   .header-inner nav {
     margin: 0;
@@ -832,10 +915,10 @@
     gap: 12px;
   }
   .stat strong {
-    font-size: 21px;
+    font-size: 18px;
   }
   .stat > span {
-    font-size: 9px;
+    font-size: 10px;
   }
   .near-flowers {
     display: none;
@@ -916,6 +999,9 @@
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 13px 9px;
   }
+  .footer-brand {
+    align-self: start;
+  }
   .footer {
     flex-direction: column;
     gap: 7px;
@@ -938,6 +1024,14 @@
     height: 124%;
     top: -24%;
     object-position: 69% center;
+  }
+}
+@media (forced-colors: active) {
+  .brand { color: LinkText; }
+  .splice-light { fill: currentColor; }
+  .footer-brand img {
+    forced-color-adjust: none;
+    background-color: #f9f4e7;
   }
 }
 @media (prefers-reduced-motion: reduce) {

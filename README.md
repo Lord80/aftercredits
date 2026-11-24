@@ -2,7 +2,7 @@
 
 A personal watch journal for movies and TV series. The static frontend runs on GitHub Pages. A small Cloudflare Worker handles optional TMDB catalog requests. Collection data stays in the browser.
 
-See the [Phase 2A visual walkthrough](docs/phase-2a/) for the previous layout, desktop and phone screenshots, and browser test results.
+The [identity guide](docs/phase-2b/) includes the Splice symbol, custom wordmark, SVG downloads, animation and desktop and phone captures. The [Phase 2A walkthrough](docs/phase-2a/) documents the cinema street composition.
 
 ## What works
 
