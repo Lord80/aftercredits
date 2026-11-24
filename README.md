@@ -2,7 +2,7 @@
 
 A personal watch journal for movies and TV series. The static frontend runs on GitHub Pages. A small Cloudflare Worker handles optional TMDB catalog requests. Collection data stays in the browser.
 
-See the glass exhibition walkthrough for paired desktop and phone captures of the collection, catalog picker and title details. The earlier guides document the Splice identity and the cinema street composition. [Phase 2C interface](docs/phase-2c/) · [Phase 2B identity](docs/phase-2b/) · [Phase 2A environment](docs/phase-2a/)
+The spatial glass walkthrough compares the journal before and after the redesign and shows the viewfinder, gallery, picker and title details at desktop and phone sizes. [Current interface](docs/phase-2c-1/) · [Phase 2C exhibition](docs/phase-2c/) · [Splice identity](docs/phase-2b/) · [Cinema street](docs/phase-2a/)
 
 ## What works
 

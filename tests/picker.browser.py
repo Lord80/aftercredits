@@ -47,6 +47,11 @@ def check_picker(page):
     result.press("Enter")
     expect(page.locator("#picked button")).to_be_focused()
     expect(page.locator("#save")).to_be_enabled()
+    expect(query).to_be_hidden()
+    page.locator("#picked button").press("Enter")
+    expect(query).to_be_focused()
+    result.click()
+    expect(page.locator("#save")).to_be_enabled()
 
     # The selection and results now sit outside the lookup input panel.
     # Switching mode must clear both before a manual title can be saved.
@@ -66,6 +71,33 @@ def check_picker(page):
     )
 
 
+def check_viewfinder(page):
+    latest = page.locator("#latest")
+    expect(latest).to_be_hidden()
+    page.locator('[data-section="tv"]').click()
+    expect(latest).to_contain_text("Manual series")
+    latest.press("Enter")
+    expect(page.locator("#detail-score")).to_have_text("7.5")
+    page.keyboard.press("Escape")
+    expect(latest).to_be_focused()
+    page.locator('[data-section="movie"]').click()
+    expect(latest).to_be_hidden()
+    page.locator(".header-inner [data-add]").click()
+    page.locator("#catalog-query").fill("fixture")
+    page.locator("#matches button").click()
+    page.locator("#save").click()
+    expect(latest).to_contain_text("Browser fixture")
+    page.locator("#query").fill("Unmatched query")
+    expect(page.locator(".no-match")).to_be_visible()
+    expect(latest).to_contain_text("Browser fixture")
+    page.locator("[data-clear]").click()
+    page.locator('[data-action="delete"]').click()
+    page.locator("#delete-form [type=submit]").click()
+    expect(latest).to_be_hidden()
+    page.locator('[data-section="tv"]').click()
+    expect(latest).to_contain_text("Manual series")
+
+
 if __name__ == "__main__":
     root = Path(__file__).resolve().parents[1]
     with ThreadingHTTPServer(("127.0.0.1", 0), partial(QuietHandler, directory=str(root))) as server:
@@ -81,7 +113,8 @@ if __name__ == "__main__":
                 page = ctx.new_page()
                 page.goto(f"http://127.0.0.1:{server.server_port}/")
                 check_picker(page)
+                check_viewfinder(page)
                 browser.close()
         finally:
             server.shutdown()
-    print("Passed keyboard media selection, catalog preview cleanup and saved half-point score.")
+    print("Passed picker, saved half-point score and per-collection viewfinder checks.")
