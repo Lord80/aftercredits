@@ -40,9 +40,13 @@ export function artwork(path, size, type, title) {
   if (src) {
     const img = new Image();
     img.alt = '';
-    img.loading = 'lazy';
+    img.loading = size === 'w342' ? 'lazy' : 'eager';
     img.decoding = 'async';
     img.addEventListener('error', () => img.remove(), { once: true });
+    if (size === 'w342' || size === 'w185') {
+      const larger = imageUrl(path, size === 'w342' ? 'w780' : 'w342');
+      img.srcset = src + ' 1x, ' + larger + ' 2x';
+    }
     img.src = src;
     frame.append(img);
   }
@@ -60,6 +64,9 @@ export function movieRow(movie) {
   card.dataset.film = movie.id;
   const open = el('button', 'open-card');
   open.dataset.action = 'details';
+  open.setAttribute('aria-haspopup', 'dialog');
+  open.setAttribute('aria-controls', 'detail-dialog');
+  open.setAttribute('aria-expanded', 'false');
   const poster = artwork(movie.metadata?.posterPath, 'w342', movie.mediaType, movie.title);
   const badge = el('span', 'score-badge');
   badge.append(el('span', 'sr-only', 'Your rating '), icon('star'), movie.rating.toFixed(1));
@@ -79,14 +86,14 @@ export function movieRow(movie) {
   const time = el('time', '', dateLabel.format(new Date(movie.added)));
   time.dateTime = movie.added;
   const date = el('div', 'added-date');
-  date.append('Added ', time);
+  date.append(el('span', 'date-prefix', 'Added'), time);
   const actions = el('div', 'actions');
   actions.append(actionButton('edit', movie.title), actionButton('delete', movie.title));
   bottom.append(date, actions);
   card.append(open, bottom);
   return card;
 }
-export function resultButton(item) {
+export function resultButton(item, selected = false) {
   const button = el('button', 'match');
   button.type = 'button';
   const text = el('span', 'match-info');
@@ -95,7 +102,14 @@ export function resultButton(item) {
     el('strong', '', item.metadata.title),
     el('small', '', date + ' · ' + (item.mediaType === 'tv' ? 'TV series' : 'Movie'))
   );
-  button.append(artwork(item.metadata.posterPath, 'w92', item.mediaType), text);
+  const poster = artwork(
+    item.metadata.posterPath,
+    selected ? 'w185' : 'w92',
+    item.mediaType,
+    item.metadata.title
+  );
+  button.append(poster, text);
+  if (!selected) button.append(icon('next'));
   return button;
 }
 export function emptyState(searching, type) {
@@ -151,12 +165,11 @@ export function presentDetails(dialog, entry) {
     image.decoding = 'async';
     image.addEventListener('error', () => image.remove(), { once: true });
     banner.append(image);
+    image.srcset = backdrop + ' 1x, ' + imageUrl(meta.backdropPath, 'w1280') + ' 2x';
     image.src = backdrop;
   }
   const poster = get('detail-poster');
-  poster.hidden = !imageUrl(meta.posterPath, 'w185');
-  poster.replaceChildren();
-  if (!poster.hidden) poster.append(artwork(meta.posterPath, 'w185', entry.mediaType));
+  poster.replaceChildren(artwork(meta.posterPath, 'w185', entry.mediaType, entry.title));
   get('detail-type').replaceChildren(icon(series ? 'tv' : 'film'), series ? 'TV series' : 'Movie');
   get('detail-title').textContent = entry.title;
   const original = get('detail-original');

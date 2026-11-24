@@ -5,7 +5,7 @@ const get = (id) => document.getElementById(id);
 const query = get('catalog-query'),
   status = get('catalog-status'),
   list = get('matches'),
-  type = get('add-type');
+  type = get('movie-form').elements['media-type'];
 let controller,
   timer,
   picked = null,
@@ -17,11 +17,15 @@ function cancel() {
 function resetResults() {
   cancel();
   picked = null;
+  get('form-error').textContent = '';
+  get('title').removeAttribute('aria-invalid');
+  query.removeAttribute('aria-invalid');
   list.replaceChildren();
   get('picked').replaceChildren();
   get('picked').hidden = true;
   get('retry').hidden = true;
   delete status.dataset.loading;
+  delete status.dataset.error;
   status.textContent = '';
   get('save').disabled = mode === 'lookup';
 }
@@ -34,7 +38,6 @@ function setMode(value) {
   get('manual-panel').hidden = lookup;
   get('catalog-panel').hidden = !lookup;
   get('title').required = !lookup;
-  get('form-error').textContent = '';
   if (lookup && query.value.trim()) schedule();
 }
 function schedule() {
@@ -62,6 +65,7 @@ function schedule() {
       status.textContent = error.message.includes('busy')
         ? error.message
         : 'Search is unavailable. Retry or enter your title manually.';
+      status.dataset.error = 'true';
       get('retry').hidden = false;
     } finally {
       if (!signal.aborted) delete status.dataset.loading;
@@ -74,11 +78,11 @@ async function choose(item) {
   const signal = controller.signal;
   const panel = get('picked');
   panel.hidden = false;
-  const selected = resultButton(item);
+  const selected = resultButton(item, true);
   const change = document.createElement('span');
   change.className = 'change-match';
-  change.textContent = 'Change';
-  selected.append(change);
+  change.textContent = 'Change selection';
+  selected.querySelector('.match-info').append(change);
   selected.addEventListener('click', () => {
     schedule();
     query.focus();
@@ -91,6 +95,12 @@ async function choose(item) {
     const full = await details(item, signal);
     if (signal.aborted) return;
     picked = full;
+    const names = (full.metadata.genres || []).map((genre) => genre.name).filter(Boolean);
+    if (names.length) {
+      const genres = document.createElement('small');
+      genres.textContent = names.slice(0, 2).join(' · ');
+      change.before(genres);
+    }
     status.textContent = 'Title selected.';
   } catch {
     if (signal.aborted) return;
@@ -110,13 +120,16 @@ get('manual-mode').addEventListener('click', () => {
 });
 query.addEventListener('input', schedule);
 query.addEventListener('keydown', (event) => {
-  if (event.key === 'Enter' && !picked) {
+  if (event.key === 'Enter') {
     event.preventDefault();
-    list.querySelector('button')?.focus();
+    (list.querySelector('button') ?? get('picked').querySelector('button'))?.focus();
   }
 });
-get('retry').addEventListener('click', schedule);
-type.addEventListener('change', () => {
+get('retry').addEventListener('click', () => {
+  schedule();
+  query.focus();
+});
+get('add-type').addEventListener('change', () => {
   setMode(mode);
 });
 export function startPicker(mediaType, isEdit) {

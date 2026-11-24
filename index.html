@@ -21,18 +21,23 @@
 
     <link rel="stylesheet" href="./css/site.css" />
     <link rel="stylesheet" href="./css/street.css" />
+    <link rel="stylesheet" href="./css/exhibition.css" />
+    <link rel="stylesheet" href="./css/dialogs.css" />
     <script defer src="./assets/vendor/gsap.min.js"></script>
     <script type="module" src="./js/app.js"></script>
   </head>
   <body>
     <svg class="symbols" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
       <symbol id="journal" viewBox="0 0 24 24">
-        <path d="M3 4.5c3.6-.8 6.3-.2 9 1.7 2.8-1.9 5.5-2.5 9-1.7v14c-3.5-.8-6.2-.2-9 1.5-2.7-1.7-5.4-2.3-9-1.5ZM12 6.2V20" />
+        <path
+          d="M3 4.5c3.6-.8 6.3-.2 9 1.7 2.8-1.9 5.5-2.5 9-1.7v14c-3.5-.8-6.2-.2-9 1.5-2.7-1.7-5.4-2.3-9-1.5ZM12 6.2V20"
+        />
       </symbol>
       <symbol id="tv" viewBox="0 0 24 24">
         <rect x="2" y="4" width="20" height="14" rx="2" />
         <path d="M8 21h8m-4-3v3" />
       </symbol>
+      <symbol id="next" viewBox="0 0 24 24"><path d="M5 12h13m-5-5 5 5-5 5" /></symbol>
       <symbol id="plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14" /></symbol>
       <symbol id="minus" viewBox="0 0 24 24"><path d="M5 12h14" /></symbol>
       <symbol id="search" viewBox="0 0 24 24">
@@ -77,7 +82,7 @@
       <div class="rain-light"><i></i><i></i><i></i></div>
     </div>
     <header class="site-header">
-      <div class="header-inner pane">
+      <div class="header-inner pane glass-rail">
         <a class="brand" href="#opening" aria-label="Aftercredits home">
           <svg class="brand-symbol" viewBox="0 0 54 56" aria-hidden="true">
             <use class="splice-upper" href="./assets/brand/aftercredits.svg#upper-frame" />
@@ -85,7 +90,9 @@
             <use class="splice-light" href="./assets/brand/aftercredits.svg#light" />
           </svg>
           <span class="brand-lettering" aria-hidden="true">
-            <svg viewBox="-1 -2 306 34"><use href="./assets/brand/aftercredits.svg#wordmark" /></svg>
+            <svg viewBox="-1 -2 306 34">
+              <use href="./assets/brand/aftercredits.svg#wordmark" />
+            </svg>
           </span>
         </a>
         <nav aria-label="Journal navigation">
@@ -102,7 +109,9 @@
       <section class="opening" id="opening" aria-labelledby="headline">
         <div class="opening-copy">
           <p class="eyebrow"><span></span>Personal watch journal</p>
-          <h1 id="headline"><span>Beyond <i>the</i></span> <em>frame<span class="headline-stop">.</span></em></h1>
+          <h1 id="headline">
+            <span>Beyond <i>the</i></span> <em>frame<span class="headline-stop">.</span></em>
+          </h1>
           <p class="intro">Keep the movies and series that stay with you.</p>
           <button class="button primary hero-add" data-add>
             <svg class="icon"><use href="#plus" /></svg>Add a title
@@ -110,7 +119,7 @@
         </div>
       </section>
       <section id="collection" class="archive" aria-labelledby="collection-title">
-        <div class="journal-index pane">
+        <div class="journal-index pane glass-index">
           <h2 id="collection-title">My collection</h2>
           <div class="section-tabs" role="group" aria-label="Collection section">
             <button type="button" data-section="movie" aria-pressed="true">
@@ -136,7 +145,7 @@
           </div>
         </div>
         <div class="gallery">
-          <div class="toolbar pane">
+          <div class="toolbar pane glass-controls">
             <label class="search"
               ><svg class="icon"><use href="#search" /></svg
               ><input
@@ -162,7 +171,7 @@
         </div>
       </section>
     </main>
-    <footer class="footer">
+    <footer class="footer pane glass-footer">
       <a class="footer-brand" href="#opening" aria-label="Aftercredits home">
         <img src="./assets/brand/aftercredits.svg" width="368" height="56" alt="" />
       </a>
@@ -181,95 +190,134 @@
       height="269"
       alt=""
     />
-    <dialog id="editor" aria-labelledby="editor-heading">
-      <form id="movie-form" class="sheet" novalidate>
-        <div class="sheet-head entry-heading">
-          <svg class="icon sheet-symbol"><use href="#film" /></svg>
+    <dialog id="editor" class="pane glass-sheet" aria-labelledby="editor-heading">
+      <form id="movie-form" novalidate>
+        <header class="sheet-head">
           <h2 id="editor-heading">Add a title</h2>
-          <button type="button" class="icon-button" data-dismiss aria-label="Close entry form">
-            <svg class="icon"><use href="#x" /></svg>
-          </button>
-        </div>
-        <div id="add-options">
-          <label class="field-label" for="add-type">Collection</label>
-          <select class="text-field" id="add-type">
-            <option value="movie">Movies</option>
-            <option value="tv">TV Series</option>
-          </select>
-          <div class="mode-switch" role="group" aria-label="Entry method">
-            <button type="button" id="lookup-mode">Search TMDB</button>
-            <button type="button" id="manual-mode">Enter manually</button>
-          </div>
-          <p id="connection-note" class="help" hidden>
-            TMDB search hasn’t been connected. You can save a title manually.
-          </p>
-        </div>
-        <div id="catalog-panel" hidden>
-          <label class="field-label" for="catalog-query">Find an exact title</label>
-          <input
-            id="catalog-query"
-            class="text-field"
-            type="search"
-            maxlength="160"
-            autocomplete="off"
-            placeholder="Search TMDB by title…"
-          />
-          <p id="catalog-status" class="help" role="status"></p>
-          <button type="button" class="text-button" id="retry" hidden>Try search again</button>
-          <div id="matches"></div>
-          <div id="picked" hidden></div>
-        </div>
-        <div id="manual-panel">
-          <label class="field-label" for="title">Title</label>
-          <input
-            id="title"
-            name="title"
-            class="text-field"
-            required
-            autocomplete="off"
-            placeholder="Enter a title"
-            aria-describedby="form-error"
-          />
-        </div>
-        <div class="rating-top">
-          <label class="field-label" for="rating">Your rating</label>
-          <div class="rating-read">
-            <svg class="icon"><use href="#star" /></svg><output id="score" for="rating">7.0</output
-            ><small>/ 10</small>
-          </div>
-        </div>
-        <div class="rating-controls">
           <button
             type="button"
-            id="decrease"
-            class="icon-button"
-            aria-label="Decrease rating by half a point"
+            class="icon-button close-button"
+            data-dismiss
+            aria-label="Close entry form"
           >
-            <svg class="icon"><use href="#minus" /></svg></button
-          ><input id="rating" type="range" min="1" max="10" step="0.5" value="7" /><button
-            type="button"
-            id="increase"
-            class="icon-button"
-            aria-label="Increase rating by half a point"
-          >
-            <svg class="icon"><use href="#plus" /></svg>
+            <svg class="icon"><use href="#x" /></svg>
           </button>
+        </header>
+        <div class="editor-body">
+          <div class="catalog-column">
+            <div id="add-options">
+              <fieldset id="add-type" class="media-selector">
+                <legend class="field-label">Collection</legend>
+                <label
+                  ><input type="radio" name="media-type" value="movie" checked /><span
+                    ><svg class="icon"><use href="#film" /></svg>Movies</span
+                  ></label
+                >
+                <label
+                  ><input type="radio" name="media-type" value="tv" /><span
+                    ><svg class="icon"><use href="#tv" /></svg>TV Series</span
+                  ></label
+                >
+              </fieldset>
+              <div class="mode-switch" role="group" aria-label="Entry method">
+                <button type="button" id="lookup-mode">Search TMDB</button>
+                <button type="button" id="manual-mode">Enter manually</button>
+              </div>
+              <p id="connection-note" class="help" hidden>
+                TMDB search hasn’t been connected. You can save a title manually.
+              </p>
+            </div>
+            <div id="catalog-panel" hidden>
+              <label class="field-label" for="catalog-query">Find an exact title</label>
+              <div class="catalog-input">
+                <svg class="icon" aria-hidden="true"><use href="#search" /></svg>
+                <input
+                  id="catalog-query"
+                  aria-describedby="form-error"
+                  class="text-field"
+                  type="search"
+                  maxlength="160"
+                  autocomplete="off"
+                  placeholder="Search TMDB by title…"
+                />
+              </div>
+              <p id="catalog-status" class="help" role="status"></p>
+              <button type="button" class="text-button" id="retry" hidden>Try search again</button>
+            </div>
+            <div id="manual-panel">
+              <label class="field-label" for="title">Title</label>
+              <input
+                id="title"
+                name="title"
+                class="text-field"
+                required
+                autocomplete="off"
+                placeholder="Enter a title"
+                aria-describedby="form-error"
+              />
+            </div>
+          </div>
+          <div id="matches"></div>
+          <section class="rating-bay" aria-labelledby="rating-label">
+            <div id="picked" hidden></div>
+            <div class="meter">
+              <label id="rating-label" class="field-label" for="rating">Your rating</label>
+              <div class="rating-read">
+                <svg class="icon" aria-hidden="true"><use href="#star" /></svg
+                ><output id="score" for="rating">7.0</output><small>/ 10</small>
+              </div>
+              <div class="rating-controls">
+                <button
+                  type="button"
+                  id="decrease"
+                  class="icon-button"
+                  aria-label="Decrease rating by half a point"
+                >
+                  <svg class="icon"><use href="#minus" /></svg>
+                </button>
+                <div class="scale">
+                  <input id="rating" type="range" min="1" max="10" step="0.5" value="7" />
+                  <div class="scale-labels" aria-hidden="true"><span>1</span><span>10</span></div>
+                </div>
+                <button
+                  type="button"
+                  id="increase"
+                  class="icon-button"
+                  aria-label="Increase rating by half a point"
+                >
+                  <svg class="icon"><use href="#plus" /></svg>
+                </button>
+              </div>
+            </div>
+          </section>
         </div>
-        <p class="error" id="form-error" role="alert"></p>
-        <div class="sheet-actions">
-          <button class="button secondary" type="button" data-dismiss>Cancel</button
-          ><button class="button primary" id="save" type="submit">Add a title</button>
+        <div class="editor-foot">
+          <p class="error" id="form-error" role="alert"></p>
+          <div class="sheet-actions">
+            <button class="button secondary" type="button" data-dismiss>Cancel</button
+            ><button class="button primary" id="save" type="submit">Save title</button>
+          </div>
         </div>
       </form>
     </dialog>
-    <dialog id="confirm" aria-labelledby="delete-heading" aria-describedby="delete-copy">
-      <form id="delete-form" class="sheet">
-        <div class="sheet-head">
-          <svg class="icon sheet-symbol"><use href="#film" /></svg
-          ><button type="button" class="icon-button" data-dismiss aria-label="Close confirmation">
+    <dialog
+      id="confirm"
+      class="pane glass-sheet"
+      aria-labelledby="delete-heading"
+      aria-describedby="delete-copy"
+    >
+      <form id="delete-form">
+        <header class="confirm-head">
+          <svg class="icon remove-symbol" aria-hidden="true"><use href="#trash" /></svg>
+          <button
+            type="button"
+            class="icon-button close-button"
+            data-dismiss
+            aria-label="Close confirmation"
+          >
             <svg class="icon"><use href="#x" /></svg>
           </button>
-        </div>
+        </header>
         <h2 id="delete-heading">Remove this title?</h2>
         <p id="delete-copy"></p>
         <div class="sheet-actions">
@@ -278,33 +326,41 @@
         </div>
       </form>
     </dialog>
-    <dialog id="detail-dialog" aria-labelledby="detail-title">
-      <div class="detail-hero" hidden></div>
+    <dialog id="detail-dialog" class="pane glass-sheet" aria-labelledby="detail-title">
       <button
         type="button"
-        class="icon-button detail-close"
+        class="icon-button close-button detail-close"
         data-dismiss
         aria-label="Close title details"
       >
         <svg class="icon"><use href="#x" /></svg>
       </button>
-      <article class="sheet detail-sheet">
-        <header class="detail-heading">
-          <div id="detail-poster" hidden></div>
-          <div>
-            <div class="field-label" id="detail-type"></div>
-            <h2 id="detail-title"></h2>
-            <p id="detail-original" hidden></p>
+      <article class="detail-scroll">
+        <div class="detail-hero" hidden></div>
+        <div class="detail-sheet">
+          <div class="detail-mount">
+            <div id="detail-poster"></div>
+            <div id="detail-personal">
+              <div class="field-label">Your rating</div>
+              <div class="detail-rating">
+                <svg class="icon" aria-hidden="true"><use href="#star" /></svg
+                ><strong id="detail-score"></strong><small>/ 10</small>
+              </div>
+              <time id="detail-added"></time>
+            </div>
           </div>
-        </header>
-        <p id="detail-description"></p>
-        <dl id="detail-facts"></dl>
-        <div id="detail-personal">
-          <div class="detail-rating">
-            <svg class="icon"><use href="#star" /></svg><span>Your rating</span
-            ><strong id="detail-score"></strong><small>/ 10</small>
+          <div class="detail-reading">
+            <header class="detail-heading">
+              <div class="field-label" id="detail-type"></div>
+              <h2 id="detail-title"></h2>
+              <p id="detail-original" hidden></p>
+            </header>
+
+            <div class="detail-notes">
+              <p id="detail-description"></p>
+              <dl id="detail-facts"></dl>
+            </div>
           </div>
-          <time id="detail-added"></time>
         </div>
       </article>
     </dialog>
