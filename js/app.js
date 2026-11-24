@@ -10,14 +10,14 @@ import {
   entrance,
   hideDialog,
   positions,
+  accentRating,
   removeFrame,
   reveal,
   showDialog,
   statistic,
 } from './motion.js';
 import { startPicker, stopPicker, focusPicker, selection } from './picker.js';
-import { imageUrl } from './catalog.js';
-import { emptyState, icon, movieRow, dateLabel } from './views.js';
+import { emptyState, icon, movieRow, presentDetails } from './views.js';
 
 const byId = (id) => document.getElementById(id);
 const results = byId('results');
@@ -34,6 +34,7 @@ let subject = null;
 let opener = null;
 let busy = false;
 let renderFrame;
+const cardNodes = new WeakMap();
 let toastTimer;
 
 function refresh() {
@@ -63,14 +64,31 @@ function render() {
     );
   const selected = selectMovies(group, query.value, order.value);
   if (selected.length) {
-    const list = document.createElement('ol');
-    list.className = 'movie-list';
-    list.append(...selected.map(movieRow));
-    results.replaceChildren(list);
+    let list = results.querySelector('.movie-list');
+    if (!list) {
+      list = document.createElement('ol');
+      list.className = 'movie-list';
+      results.replaceChildren(list);
+    }
+    const cards = selected.map((entry) => {
+      if (!cardNodes.has(entry)) cardNodes.set(entry, movieRow(entry));
+      return cardNodes.get(entry);
+    });
+    const retained = new Set(cards);
+    for (const card of [...list.children]) if (!retained.has(card)) card.remove();
+    cards.forEach((card, index) => {
+      const atIndex = list.children[index];
+      if (atIndex !== card) list.insertBefore(card, atIndex ?? null);
+    });
     reveal(list, previous);
   } else {
-    results.replaceChildren(emptyState(group.length > 0, section));
-    reveal(results, previous);
+    const state = section + (group.length ? '-search' : '-empty');
+    if (results.firstElementChild?.dataset.state !== state) {
+      const panel = emptyState(group.length > 0, section);
+      panel.dataset.state = state;
+      results.replaceChildren(panel);
+      reveal(results, previous);
+    }
   }
   byId('result-status').textContent =
     selected.length +
@@ -80,7 +98,9 @@ function render() {
 
 function highlightRating() {
   const value = rating.valueAsNumber;
-  byId('score').textContent = value.toFixed(1);
+  const score = byId('score');
+  if (editor.open && score.textContent !== value.toFixed(1)) accentRating(score);
+  score.textContent = value.toFixed(1);
   rating.style.setProperty('--progress', ((value - 1) / 9) * 100 + '%');
   rating.setAttribute('aria-valuetext', value + ' out of 10');
   byId('increase').disabled = value >= 10;
@@ -91,42 +111,10 @@ function openPanel(action, film, button) {
   subject = film?.id ?? null;
   opener = button;
   if (action === 'details') {
-    const m = film.metadata;
-    const dialog = byId('detail-dialog'),
-      banner = dialog.querySelector('.detail-hero');
-    banner.replaceChildren();
-    banner.hidden = true;
-    const src = imageUrl(m?.backdropPath, 'w780');
-    if (src) {
-      const image = new Image();
-      image.alt = '';
-      image.onload = () => {
-        if (banner.contains(image)) banner.hidden = false;
-      };
-      image.onerror = () => image.remove();
-      banner.append(image);
-      image.src = src;
-    }
-    byId('detail-title').textContent = film.title;
-    byId('detail-type').textContent = film.mediaType === 'tv' ? 'TV series' : 'Movie';
-    const facts = [
-      m?.releaseDate,
-      ...(Array.isArray(m?.genres) ? m.genres.map((g) => g?.name) : []),
-      typeof m?.originalLanguage === 'string' ? m.originalLanguage.toUpperCase() : null,
-    ].filter(Boolean);
-    byId('detail-facts').textContent = facts.join('  ·  ');
-    byId('detail-description').textContent =
-      m?.overview ||
-      (film.tmdbId
-        ? 'A description is unavailable for this title.'
-        : 'This title was saved manually.');
-    byId('detail-personal').textContent =
-      'Your rating ' +
-      film.rating.toFixed(1) +
-      ' / 10  ·  Added ' +
-      dateLabel.format(new Date(film.added));
+    const dialog = byId('detail-dialog');
+    presentDetails(dialog, film);
     showDialog(dialog);
-    dialog.querySelector('button').focus();
+    dialog.querySelector('.detail-close').focus({ preventScroll: true });
     return;
   }
   if (action === 'delete') {
@@ -147,20 +135,29 @@ function openPanel(action, film, button) {
   focusPicker();
 }
 
-async function closePanel(dialog) {
+async function closePanel(dialog, updateCollection) {
   if (dialog === editor) stopPicker();
+  const previousCard = opener?.closest('[data-film]');
+  const neighborId = (previousCard?.nextElementSibling ?? previousCard?.previousElementSibling)
+    ?.dataset.film;
   await hideDialog(dialog);
-  if (opener?.isConnected) opener.focus({ preventScroll: true });
-  else {
-    const row = [...results.querySelectorAll('[data-film]')].find(
-      (el) => el.dataset.film === subject
-    );
-    (row?.querySelector('button') ?? document.querySelector('.header-inner [data-add]')).focus({
-      preventScroll: true,
-    });
+  updateCollection?.();
+  let target = opener;
+  if (!target?.isConnected) {
+    const cards = [...results.querySelectorAll('[data-film]')];
+    const current = cards.find((card) => card.dataset.film === subject);
+    const neighbor = cards.find((card) => card.dataset.film === neighborId);
+    target =
+      [...(current?.querySelectorAll('button') ?? [])].find(
+        (button) => button.dataset.action === opener?.dataset.action
+      ) ??
+      neighbor?.querySelector('.open-card') ??
+      results.querySelector('[data-add]') ??
+      document.querySelector('.header-inner [data-add]');
   }
-  subject = null;
+  target.focus({ preventScroll: true });
   opener = null;
+  subject = null;
 }
 
 async function dismiss(dialog) {
@@ -191,16 +188,14 @@ async function submit(event) {
   try {
     const picked = deleting ? {} : selection();
     await changeMovie({ action, id: subject, ...picked, rating: rating.valueAsNumber });
-    if (!deleting) section = picked.mediaType;
-    if (deleting) {
-      removeFrame(
-        [...results.querySelectorAll('[data-film]')].find((row) => row.dataset.film === subject)
-      );
-    } else {
-      query.value = '';
-    }
-    refresh();
-    await closePanel(dialog);
+    await closePanel(dialog, () => {
+      if (deleting) removeFrame(opener?.closest('[data-film]'));
+      else {
+        section = picked.mediaType;
+        query.value = '';
+      }
+      refresh();
+    });
     feedback(
       { add: 'Title added to your collection.', edit: 'Title updated.', delete: 'Title removed.' }[
         action

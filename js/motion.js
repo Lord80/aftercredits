@@ -1,28 +1,39 @@
 const reduced = matchMedia('(prefers-reduced-motion: reduce)');
 const animate = () => window.gsap && !reduced.matches && !document.hidden;
 
+const ease = 'power3.out';
+reduced.addEventListener('change', (event) => {
+  if (event.matches)
+    window.gsap?.globalTimeline
+      .getChildren(false, true, true)
+      .forEach((tween) => tween.totalProgress(1));
+});
+
 export function entrance() {
   if (!animate()) return;
-  gsap.from('.hero-art', { scale: 1.035, duration: 1.25, ease: 'power2.out' });
-  gsap.from(
-    [
-      '.eyebrow',
-      '.hero h1 span',
-      '.hero h1 em',
-      '.hero p',
-      '.stats',
-      '.collection-top',
-      '.toolbar',
-    ],
-    {
-      y: 13,
-      opacity: 0,
-      stagger: 0.065,
-      duration: 0.58,
-      ease: 'power3.out',
-      clearProps: 'transform,opacity',
-    }
-  );
+  const sequence = gsap.timeline({ defaults: { ease, clearProps: 'transform,opacity' } });
+  sequence
+    .from('.hero-art', { scale: 1.025, xPercent: 0.35, duration: 1.4 }, 0)
+    .from('.header-inner', { opacity: 0, y: -5, duration: 0.32 }, 0)
+    .from(
+      ['.eyebrow', '.hero h1 span', '.hero h1 em', '.hero p'],
+      { opacity: 0, y: 14, stagger: 0.055, duration: 0.52 },
+      0.035
+    )
+    .from(
+      ['.collection-top', '.toolbar'],
+      { opacity: 0, y: 7, stagger: 0.045, duration: 0.4 },
+      0.16
+    );
+}
+
+export function accentRating(node) {
+  if (animate())
+    gsap.fromTo(
+      node,
+      { scale: 1.13, y: -1 },
+      { scale: 1, y: 0, duration: 0.22, ease, overwrite: true, clearProps: 'transform' }
+    );
 }
 
 export function positions(list) {
@@ -36,25 +47,32 @@ export function positions(list) {
 
 export function reveal(list, previous) {
   if (!animate()) return;
+  const rows = [...list.children];
+  // Read all destination boxes together, before starting any new tweens.
+  for (const tween of gsap.getTweensOf(rows)) tween.totalProgress(1).kill();
+  const boxes = rows.map((row) => row.getBoundingClientRect());
   let entered = 0;
-  for (const row of list.children) {
+  rows.forEach((row, index) => {
+    const box = boxes[index];
+    if (box.bottom < 0 || box.top > window.innerHeight + 120) return;
     const prior = previous.get(row.dataset.film);
     if (prior) {
-      const current = row.getBoundingClientRect();
-      const x = prior.left - current.left,
-        y = prior.top - current.top;
-      if (Math.abs(y) > 1 || Math.abs(x) > 1)
-        gsap.from(row, { x, y, duration: 0.32, ease: 'power3.out', clearProps: 'transform' });
+      const x = prior.left - box.left,
+        y = prior.top - box.top;
+      if (Math.abs(x) > 1 || Math.abs(y) > 1)
+        gsap.from(row, { x, y, duration: 0.34, ease, clearProps: 'transform' });
     } else {
       gsap.from(row, {
-        y: 8,
+        y: 12,
         opacity: 0,
-        duration: 0.33,
-        delay: Math.min(entered++, 7) * 0.035,
+        scale: 0.991,
+        duration: 0.38,
+        delay: Math.min(entered++, 5) * 0.028,
+        ease,
         clearProps: 'transform,opacity',
       });
     }
-  }
+  });
 }
 
 export function removeFrame(row) {
@@ -75,7 +93,13 @@ export function removeFrame(row) {
     zIndex: '1',
   });
   document.body.append(ghost);
-  gsap.to(ghost, { x: -15, opacity: 0, duration: 0.22, onComplete: () => ghost.remove() });
+  gsap.to(ghost, {
+    y: -5,
+    scale: 0.97,
+    opacity: 0,
+    duration: 0.2,
+    onComplete: () => ghost.remove(),
+  });
 }
 
 export function statistic(node, value, format) {
@@ -106,12 +130,11 @@ export function showDialog(dialog) {
   if (animate())
     gsap.fromTo(
       dialog,
-      { y: 22, opacity: 0, scale: 0.985, clipPath: 'inset(0 0 7% 0 round 10px)' },
+      { y: 16, opacity: 0, scale: 0.985 },
       {
         y: 0,
         opacity: 1,
         scale: 1,
-        clipPath: 'inset(0 0 0% 0 round 10px)',
         duration: 0.32,
         ease: 'power3.out',
         clearProps: 'all',
