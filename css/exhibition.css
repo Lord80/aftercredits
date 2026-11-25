@@ -65,6 +65,10 @@
   padding: 6px 10px;
   border-left: 1px solid #c1dce447;
 }
+.movie-list[data-long] > .poster-card {
+  content-visibility: auto;
+  contain-intrinsic-block-size: auto 84px;
+}
 .poster-card:first-child {
   border-left: 0;
 }

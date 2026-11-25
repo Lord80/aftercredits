@@ -8,6 +8,11 @@ import {
 } from './collection.js';
 import {
   entrance,
+  editedFrame,
+  setupAtmosphere,
+  play,
+  canMove,
+  timing,
   hideDialog,
   positions,
   accentRating,
@@ -21,7 +26,7 @@ import {
   arrangeStage,
   cueFrame,
   currentFrame,
-  forgetFrame,
+  rememberFrame,
   latestFrame,
   stepFrame,
 } from './stage.js';
@@ -44,11 +49,24 @@ let opener = null;
 let busy = false;
 let renderFrame;
 const cardNodes = new WeakMap();
+let records = new Map();
+const lens = document.createElement('i');
+lens.className = 'tab-lens';
+lens.setAttribute('aria-hidden', 'true');
 let toastTimer;
 
 function refresh() {
   const state = snapshot();
-  movies = state.items;
+  // A storage read parses new objects. Keep equal snapshots referentially stable for the strip and stage.
+  const next = new Map();
+  movies = state.items.map((item) => {
+    const bytes = JSON.stringify(item);
+    const prior = records.get(item.id);
+    const record = prior?.bytes === bytes ? prior : { bytes, item };
+    next.set(item.id, record);
+    return record.item;
+  });
+  records = next;
   byId('storage-note').textContent = state.notice;
   byId('storage-note').hidden = !state.notice;
   statistic(byId('total'), movies.length, (n) => String(Math.round(n)).padStart(2, '0'));
@@ -71,6 +89,25 @@ function render() {
     .forEach((button) =>
       button.setAttribute('aria-pressed', String(button.dataset.section === section))
     );
+  const tab = document.querySelector('[data-section="' + section + '"]');
+  if (lens.parentNode !== tab) {
+    const from = lens.isConnected && canMove() && lens.getBoundingClientRect();
+    tab.prepend(lens);
+    if (from) {
+      const to = tab.getBoundingClientRect();
+      play(
+        lens,
+        [
+          {
+            transform:
+              'translateX(' + (from.left - to.left) + 'px) scaleX(' + from.width / to.width + ')',
+          },
+          { transform: 'none' },
+        ],
+        { duration: timing.shift }
+      );
+    }
+  }
   const selected = selectMovies(group, query.value, order.value);
   if (selected.length) {
     let list = results.querySelector('.movie-list');
@@ -79,16 +116,28 @@ function render() {
       list.className = 'movie-list';
       results.replaceChildren(list);
     }
+    list.toggleAttribute('data-long', selected.length > 24);
     const cards = selected.map((entry) => {
       if (!cardNodes.has(entry)) cardNodes.set(entry, movieRow(entry));
       return cardNodes.get(entry);
     });
-    const retained = new Set(cards);
-    for (const card of [...list.children]) if (!retained.has(card)) card.remove();
-    cards.forEach((card, index) => {
-      const atIndex = list.children[index];
-      if (atIndex !== card) list.insertBefore(card, atIndex ?? null);
-    });
+    // Reorder a large sort in one DOM transaction. Ordinary additions retain their focused controls.
+    const first = list.firstElementChild;
+    if (
+      cards.length > 24 &&
+      first &&
+      first !== cards[0] &&
+      !list.contains(document.activeElement)
+    ) {
+      list.replaceChildren(...cards);
+    } else {
+      const retained = new Set(cards);
+      for (const card of [...list.children]) if (!retained.has(card)) card.remove();
+      cards.forEach((card, index) => {
+        const atIndex = list.children[index];
+        if (atIndex !== card) list.insertBefore(card, atIndex ?? null);
+      });
+    }
     reveal(list, previous);
   } else {
     const state = section + (group.length ? '-search' : '-empty');
@@ -110,7 +159,9 @@ function render() {
 function highlightRating() {
   const value = rating.valueAsNumber;
   const score = byId('score');
-  if (editor.open && score.textContent !== value.toFixed(1)) accentRating(score);
+  const direction = Math.sign(value - Number(score.textContent));
+  if (editor.open && direction) accentRating(score, direction, value >= 9);
+  rating.closest('.meter').toggleAttribute('data-high', value >= 9);
   score.textContent = value.toFixed(1);
   const meter = rating.closest('.meter');
   meter.style.setProperty('--sweep', (value - 1) * 30 + 'deg');
@@ -127,7 +178,7 @@ function openPanel(action, film, button) {
     const dialog = byId('detail-dialog');
     button.setAttribute('aria-expanded', 'true');
     presentDetails(dialog, film);
-    showDialog(dialog, button);
+    showDialog(dialog, button, film.id);
     dialog.querySelector('.detail-close').focus({ preventScroll: true });
     return;
   }
@@ -154,7 +205,7 @@ async function closePanel(dialog, updateCollection) {
   const previousCard = opener?.closest('[data-film]');
   const neighborId = (previousCard?.nextElementSibling ?? previousCard?.previousElementSibling)
     ?.dataset.film;
-  await hideDialog(dialog, opener);
+  await hideDialog(dialog, opener, subject);
   if (dialog.id === 'detail-dialog') opener?.setAttribute('aria-expanded', 'false');
   updateCollection?.();
   let target = opener;
@@ -202,15 +253,21 @@ async function submit(event) {
   const action = deleting ? 'delete' : subject ? 'edit' : 'add';
   try {
     const picked = deleting ? {} : selection();
-    await changeMovie({ action, id: subject, ...picked, rating: rating.valueAsNumber });
+    const savedId = await changeMovie({
+      action,
+      id: subject,
+      ...picked,
+      rating: rating.valueAsNumber,
+    });
     await closePanel(dialog, () => {
       if (deleting) removeFrame(opener?.closest('[data-film]'));
       else {
         section = picked.mediaType;
-        if (action === 'add') forgetFrame(section);
+        if (action === 'add') rememberFrame(section, savedId);
         query.value = '';
       }
       refresh();
+      if (action === 'edit') editedFrame(subject);
     });
     feedback(
       { add: 'Title added to your collection.', edit: 'Title updated.', delete: 'Title removed.' }[
@@ -313,6 +370,13 @@ document.querySelector('.projector').addEventListener('keydown', (event) => {
   event.preventDefault();
   stepFrame(event.key === 'ArrowLeft' ? -1 : 1);
 });
+setupAtmosphere();
 await initialize();
 refresh();
 entrance();
+
+// Exact statistics and all controls are ready before loading the optional counter animator.
+const countersScript = document.createElement('script');
+countersScript.src = new URL('../assets/vendor/gsap.min.js', import.meta.url).href;
+countersScript.fetchPriority = 'low';
+document.head.append(countersScript);

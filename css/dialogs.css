@@ -333,23 +333,6 @@ dialog h2 {
 #matches .match:focus-visible .artwork {
   outline: 2px solid #518496;
 }
-@media (prefers-reduced-motion: no-preference) {
-  #matches .match {
-    animation: mount-result 0.26s var(--ease-out) both;
-  }
-  #matches .match:nth-child(2) {
-    animation-delay: 25ms;
-  }
-  #matches .match:nth-child(3) {
-    animation-delay: 45ms;
-  }
-  @keyframes mount-result {
-    from {
-      opacity: 0.45;
-      transform: perspective(650px) translateY(8px) rotateX(-4deg);
-    }
-  }
-}
 .rating-bay {
   padding: 16px;
   border-radius: 19px;
@@ -1099,5 +1082,31 @@ dialog h2 {
   .catalog-column,
   .detail-sheet {
     background: var(--solid);
+  }
+}
+
+@property --sweep {
+  syntax: '<angle>';
+  initial-value: 180deg;
+  inherits: true;
+}
+.score-ring::before {
+  transition: --sweep var(--motion-tap) var(--ease-out);
+}
+.meter[data-high] .score-ring::before {
+  filter: drop-shadow(0 0 2px #ffd59599);
+}
+@media (prefers-reduced-motion: no-preference) {
+  .detail-hero img[data-loaded],
+  .picked-backdrop[data-loaded] {
+    animation: develop-image var(--motion-travel) var(--ease-out) backwards;
+  }
+  @keyframes develop-image {
+    from {
+      opacity: 0.08;
+    }
+    to {
+      opacity: 1;
+    }
   }
 }

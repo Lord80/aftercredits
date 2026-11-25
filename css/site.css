@@ -50,6 +50,12 @@
   --smoke: #173c43;
   --etch: #365b5d38;
   --bevel: inset 0 1px 0 #ffffffeb, inset 1px 0 0 #ffffff70, inset -1px -1px 0 #56767645;
+  --motion-tap: 155ms;
+  --motion-shift: 265ms;
+  --motion-travel: 435ms;
+  --motion-projection: 560ms;
+  --motion-beat: 27ms;
+  --ease-return: cubic-bezier(0.38, 0.02, 0.34, 1);
   --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
   --quick: 180ms;
   --accent-dark: #174952;
@@ -161,7 +167,7 @@ h3 {
   justify-content: center;
   border-radius: 8px;
   transition:
-    transform 0.22s,
+    transform var(--motion-tap) var(--ease-out),
     background 0.22s,
     box-shadow 0.22s;
 }
@@ -239,7 +245,7 @@ h3 {
   object-fit: cover;
   width: 100%;
   height: 100%;
-  transition: transform 0.45s;
+  transition: transform var(--motion-travel) var(--ease-out);
 }
 .notice,
 .error {

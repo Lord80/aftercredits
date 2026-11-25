@@ -2,7 +2,7 @@
 
 A personal watch journal for movies and TV series. The static frontend runs on GitHub Pages. A small Cloudflare Worker handles optional TMDB catalog requests. Collection data stays in the browser.
 
-The journal opens onto a screening room overlooking the cinema street. Browse mounted posters, jump to a title in the filmstrip, or open its full-window projection. The design walkthrough includes a short screen recording and desktop, tablet and phone captures. [Explore the screening room](docs/screening-room/) · [Earlier spatial design](docs/phase-2c-1/) · [Splice identity](docs/phase-2b/) · [Cinema street](docs/phase-2a/)
+The journal opens onto a screening room overlooking the cinema street. Browse mounted posters, jump to a title in the filmstrip, or open its full-window projection. Swipe, use the arrow keys or choose a print to bring it forward. **Ambient motion** in the footer pauses the moving weather. [Motion recordings, measurements and verification](docs/phase-2d/) · [Screening room layout and device captures](docs/screening-room/) · [Earlier spatial design](docs/phase-2c-1/) · [Splice identity](docs/phase-2b/) · [Cinema street](docs/phase-2a/)
 
 ## What works
 
