@@ -27,16 +27,16 @@ Keyboard focus, exact values and storage commits belong to application state. Ea
 
 ## Performance measurements
 
-Five paired runs per revision in Chromium 156 on the same cloud machine, at 1152 × 760. The comparison used the merged screening room at `ee7d889` and the Phase 2D build. Each pair alternated which build ran first. Both were served by Python over loopback with native browser caching, the same assets and browser settings. The load metric ends when the collection status is populated. Warm visits reused the same browser context. The sort and navigation samples used the same 300 manual entries, without any remote image requests.
+The final comparison used five paired runs per revision in Chromium 156 on the same cloud machine, at 1152 × 760. The comparison used the merged screening room at `ee7d889` and the Phase 2D build. Each pair alternated which build ran first. Both were served by Python over loopback with native browser caching, the same assets and browser settings. The load metric ends when the collection status is populated. Warm visits reused the same browser context. The sort and navigation samples used the same 300 manual entries, without any remote image requests.
 
 | Median across five runs | Approved release | Phase 2D |
 | --- | ---: | ---: |
-| Cold empty collection ready | 295.0 ms | 294.0 ms |
-| Warm empty collection ready | 48.1 ms | 42.1 ms |
-| 300-title sort, including synchronous layout | 240.9 ms | 35.1 ms |
+| Cold empty collection ready | 335.4 ms | 292.6 ms |
+| Warm empty collection ready | 47.4 ms | 59.9 ms |
+| 300-title sort, including synchronous layout | 210.5 ms | 32.4 ms |
 | 95th-percentile animation-frame interval during rapid navigation | 16.7 ms | 16.8 ms |
 
-The largest measured change was in sorting. The filmstrip now reads layout near the visible frames and lets the browser skip offscreen contents. Unchanged records and poster nodes survive unrelated writes. Two of the five Phase 2D navigation runs recorded a 33.3 ms 95th-percentile interval. These browser frame callbacks measure scheduling and cannot establish display presentation at a sustained 60 FPS. The loopback measurements also cannot reproduce the reported corporate Wi-Fi stalls.
+The largest measured change was in sorting. The filmstrip now reads layout near the visible frames and lets the browser skip offscreen contents. Unchanged records and poster nodes survive unrelated writes. An earlier five-pair comparison also reduced sort time, from 240.9 to 35.1 ms. Warm startup varied between comparisons. In the final run its median increased by 12.5 ms. One of the five final Phase 2D navigation runs recorded a 33.3 ms 95th-percentile interval. These browser frame callbacks measure scheduling and cannot establish display presentation at a sustained 60 FPS. The loopback measurements also cannot reproduce the reported corporate Wi-Fi stalls. [All individual samples](measurements.csv)
 
 ## Browser verification
 
