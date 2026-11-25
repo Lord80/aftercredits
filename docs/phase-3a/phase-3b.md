@@ -1,0 +1,18 @@
+# Proposed cloud data model for Phase 3B
+
+Phase 3A runs entirely in the browser. These tables and access rules describe a future, opt-in authenticated sync service. No database, account, credential or cloud client is provisioned by the vault.
+
+| PostgreSQL table | Proposed columns and constraints |
+| --- | --- |
+| `collection_heads` | `owner_id uuid primary key references auth.users(id)`, `revision bigint not null default 0`. The owner row serializes accepted mutations and supplies a per-owner sync cursor. |
+| `collection_entries` | Composite primary key `(owner_id, local_id)`. Keep `local_id text` to preserve existing UUIDs and legacy string IDs. Store `media_type`, nullable positive `tmdb_id bigint`, `display_title text`, `manual_title_key text`, `rating numeric(3,1)`, `added_at timestamptz`, `added_source text`, `metadata jsonb`, and `extra_fields jsonb`. The source value preserves original timestamp spelling, precision or date-only form for lossless export. |
+| Entry revision fields | `revision bigint`, server-assigned `updated_at timestamptz`, nullable `deleted_at timestamptz`. Index `(owner_id, revision)` for incremental reads. Tombstones retain the stable ID so an offline device cannot resurrect deleted entries silently. |
+| `collection_operations` | Unique `(owner_id, operation_id uuid)`, request fingerprint, committed revision and result. Devices can replay an operation after a lost response. Reject reuse of an operation ID with different content. |
+
+Apply database checks to media type, a nonblank title, positive TMDB IDs and half-point ratings between 1 and 10. Reserve vault envelope and authoritative column names outside the extension JSON. Add two partial unique indexes on active records. For catalog titles use `(owner_id, media_type, tmdb_id)` when TMDB ID is present. For manual titles use `(owner_id, media_type, manual_title_key)` when it is null. Generate and validate the normalized manual key on the trusted write path using the current NFKC, whitespace and case rules, with shared Unicode fixtures. A default PostgreSQL collation alone does not implement that contract.
+
+An authenticated mutation supplies the stable local ID, an operation ID and the last observed entry revision. In one transaction, verify ownership, lock the owner’s head row, handle a replay, compare the base revision, increment the owner revision, then write the entry or tombstone and operation result. Holding the head lock until commit keeps the cursor ordered across concurrent devices. A stale base revision returns both versions for review, including personal ratings and dates. Clients advance their cursor only after durably applying a page of changes. A restore also emits deletions for displaced records and requires an explicit conflict policy.
+
+Enable row-level security on every owner-scoped table. Derive the owner from the authenticated session and restrict reads and writes to that owner. Use narrowly granted transactional write functions or an authenticated service endpoint. Allow read access to an owner’s rows only. Prevent clients from setting server revisions, impersonating another owner or bypassing the validated write path. Keep service-role credentials on the server. Test with two distinct accounts and an unauthenticated client before enabling sync.
+
+On first connection, compare local and remote records with the vault’s identity and conflict rules. Present a preview and generate a portable recovery file before replacing either archive. Keep deletion markers until all supported devices have passed the deletion revision, or require a full resync after a documented retention window. The local v2 format and the JSON backup remain usable independently of cloud availability.

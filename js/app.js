@@ -22,6 +22,7 @@ import {
   showDialog,
   statistic,
 } from './motion.js';
+import { backupStatus, reminderDue, STATUS_KEY } from './vault-status.js';
 import { trackStrip } from './filmstrip.js';
 import {
   arrangeStage,
@@ -56,7 +57,20 @@ lens.className = 'tab-lens';
 lens.setAttribute('aria-hidden', 'true');
 let toastTimer;
 
+function updateVaultControl() {
+  const due = reminderDue(backupStatus());
+  const control = byId('vault-open');
+  control.toggleAttribute('data-due', due);
+  control.setAttribute('aria-label', due ? 'Data Vault, backup reminder' : 'Data Vault');
+}
+byId('vault-open').addEventListener('click', async () => {
+  try {
+    const { openVault } = await import('./vault.js');
+    openVault(() => refresh(), updateVaultControl);
+  } catch { feedback('The Data Vault could not open. Try again.'); }
+});
 function refresh(state = snapshot()) {
+  updateVaultControl();
   // A storage read parses new objects. Keep equal snapshots referentially stable for the strip and stage.
   const next = new Map();
   movies = state.items.map((item) => {
@@ -378,6 +392,7 @@ query.addEventListener('input', () => {
 });
 order.addEventListener('change', render);
 window.addEventListener('storage', (event) => {
+  if (event.key === STATUS_KEY) updateVaultControl();
   if (event.key === STORAGE_KEY || event.key === LEGACY_KEY || event.key === null) refresh();
 });
 

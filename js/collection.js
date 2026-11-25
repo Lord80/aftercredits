@@ -1,30 +1,21 @@
+import {
+  cleanTitle,
+  titleKey,
+  validRating,
+  validType,
+  validEntry,
+  legacyEntry,
+  identity,
+} from './validation.js';
+import { noteChanges } from './vault-status.js';
+export { cleanTitle, titleKey, validRating, validType } from './validation.js';
+
 export const STORAGE_KEY = 'aftercredits.collection.v2';
 export const LEGACY_KEY = 'aftercredits.collection.v1';
-export const cleanTitle = (title) => title.normalize('NFKC').trim().replace(/\s+/gu, ' ');
-export const titleKey = (title) => cleanTitle(title).toLowerCase();
-export const validRating = (n) =>
-  Number.isFinite(n) && n >= 1 && n <= 10 && Number.isInteger(n * 2);
-export const validType = (type) => type === 'movie' || type === 'tv';
-
 const temporary = 'Browser storage is unavailable. Changes will last for this tab session.';
 let memoryOnly = false;
 let items = [];
 let notice = '';
-
-function validEntry(entry) {
-  return (
-    entry &&
-    typeof entry.id === 'string' &&
-    entry.id &&
-    typeof entry.title === 'string' &&
-    cleanTitle(entry.title) &&
-    validType(entry.mediaType) &&
-    validRating(entry.rating) &&
-    (entry.tmdbId === null || (Number.isSafeInteger(entry.tmdbId) && entry.tmdbId > 0)) &&
-    typeof entry.added === 'string' &&
-    Number.isFinite(Date.parse(entry.added))
-  );
-}
 
 function read() {
   if (memoryOnly) return;
@@ -43,12 +34,7 @@ function read() {
     if (raw === null) {
       const old = legacy === null ? [] : JSON.parse(legacy);
       if (!Array.isArray(old)) throw new Error();
-      entries = old.map((entry) => ({
-        ...entry,
-        mediaType: 'movie',
-        tmdbId: null,
-        metadata: null,
-      }));
+      entries = old.map(legacyEntry);
     } else {
       const data = JSON.parse(raw);
       if (data?.version !== 2 || !Array.isArray(data.entries)) throw new Error();
@@ -69,11 +55,12 @@ function read() {
   }
 }
 
-function write(next) {
+function write(next, changes = 0) {
   items = next;
   if (!memoryOnly) {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify({ version: 2, entries: next }));
+      if (changes) noteChanges(changes);
     } catch {
       memoryOnly = true;
       notice = temporary;
@@ -81,8 +68,8 @@ function write(next) {
   }
 }
 
-const withLock = (task) =>
-  navigator.locks ? navigator.locks.request(STORAGE_KEY, async () => task()) : task();
+export const withLock = (task, options = {}) =>
+  navigator.locks ? navigator.locks.request(STORAGE_KEY, options, async () => task()) : task();
 
 export async function initialize() {
   // Reading v2 is atomic. Only the legacy copy needs to coordinate with writers.
@@ -105,7 +92,10 @@ export function changeMovie({ action, id, title, rating, mediaType, match }) {
     const existing = items.find((entry) => entry.id === id);
     if (id && !existing) throw new Error('This entry has already been removed.');
     if (action === 'delete') {
-      write(items.filter((entry) => entry.id !== id));
+      write(
+        items.filter((entry) => entry.id !== id),
+        1
+      );
       return;
     }
     const cleaned = cleanTitle(title);
@@ -119,33 +109,34 @@ export function changeMovie({ action, id, title, rating, mediaType, match }) {
     ) {
       throw new Error('Select a valid movie or TV series.');
     }
-    const duplicate = items.some(
-      (entry) =>
-        entry.id !== id &&
-        entry.mediaType === type &&
-        (tmdbId !== null
-          ? entry.tmdbId === tmdbId
-          : entry.tmdbId === null && titleKey(entry.title) === titleKey(cleaned))
-    );
+    const key = identity({ mediaType: type, tmdbId, title: cleaned });
+    const duplicate = items.some((entry) => entry.id !== id && identity(entry) === key);
     if (duplicate) throw new Error('This title is already in this collection.');
     if (existing) {
-      write(items.map((entry) => (entry.id === id ? { ...entry, title: cleaned, rating } : entry)));
+      if (existing.title !== cleaned || existing.rating !== rating)
+        write(
+          items.map((entry) => (entry.id === id ? { ...entry, title: cleaned, rating } : entry)),
+          1
+        );
     } else {
       const newId =
         globalThis.crypto?.randomUUID?.() ??
         Date.now().toString(36) + Math.random().toString(36).slice(2);
-      write([
-        {
-          id: newId,
-          mediaType: type,
-          tmdbId,
-          metadata: match?.metadata ?? null,
-          title: cleaned,
-          rating,
-          added: new Date().toISOString(),
-        },
-        ...items,
-      ]);
+      write(
+        [
+          {
+            id: newId,
+            mediaType: type,
+            tmdbId,
+            metadata: match?.metadata ?? null,
+            title: cleaned,
+            rating,
+            added: new Date().toISOString(),
+          },
+          ...items,
+        ],
+        1
+      );
       return newId;
     }
   });
