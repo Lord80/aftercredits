@@ -2,7 +2,10 @@
 <html lang="en">
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, interactive-widget=resizes-content"
+    />
     <meta name="theme-color" content="#eaf3fa" />
     <meta
       name="description"
@@ -70,7 +73,11 @@
       <picture class="plaza"
         ><source
           media="(max-width:700px) and (orientation:portrait)"
-          srcset="./assets/images/street/plaza-portrait.webp" />
+          sizes="max(100vw, 66.67vh)"
+          srcset="
+            ./assets/images/street/plaza-portrait-compact.webp 600w,
+            ./assets/images/street/plaza-portrait.webp         850w
+          " />
         <img
           fetchpriority="high"
           src="./assets/images/street/plaza.webp"
@@ -206,7 +213,7 @@
                 type="search"
                 id="query"
                 aria-label="Search collection by title"
-                placeholder="Search titles…"
+                placeholder="Search"
                 maxlength="300"
             /></label>
             <label class="sort"

@@ -40,7 +40,7 @@ export function artwork(path, size, type, title) {
   if (src) {
     const img = new Image();
     img.alt = '';
-    img.loading = 'lazy';
+    img.loading = size === 'w342' ? 'eager' : 'lazy';
     img.decoding = 'async';
     img.addEventListener('error', () => img.remove(), { once: true });
     const higherDensity = { w92: 'w185', w185: 'w342', w342: 'w780', w780: 'w1280' }[size];
@@ -81,8 +81,9 @@ export function movieRow(movie) {
     [year, movie.mediaType === 'tv' ? 'TV series' : 'Movie'].filter(Boolean).join(' · ')
   );
   const label = el('div', 'print-label');
-  label.append(caption, title);
-  open.append(el('span', 'sr-only', 'View title details'), poster, label);
+  label.append(title, caption);
+  open.setAttribute('aria-description', 'Open title details');
+  open.append(label, poster);
   const bottom = el('div', 'card-bottom');
   const time = el('time', '', dateLabel.format(new Date(movie.added)));
   time.dateTime = movie.added;

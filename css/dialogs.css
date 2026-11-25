@@ -1085,6 +1085,99 @@ dialog h2 {
   }
 }
 
+/* Anchor the command row inside the usable viewport. In a short window only the
+   catalog and score scroll, so a long list cannot displace Save or Cancel. */
+#editor[data-tight] {
+  --sheet-bottom: max(5px, env(safe-area-inset-bottom));
+  max-height: calc(
+    var(--usable-height, 100dvh) - var(--sheet-bottom) - max(5px, env(safe-area-inset-top))
+  );
+  margin-bottom: calc(var(--keyboard-inset, 0px) + var(--sheet-bottom));
+  overflow: hidden;
+}
+#editor[data-tight] #movie-form {
+  display: flex;
+  flex-direction: column;
+  max-height: inherit;
+}
+#editor[data-tight] .editor-body {
+  min-height: 0;
+  overflow: auto;
+  overscroll-behavior: contain;
+  align-items: start;
+  padding: 3px;
+  margin: -3px;
+  scrollbar-width: thin;
+}
+#editor[data-tight] .rating-bay {
+  align-self: start;
+}
+#editor[data-tight] #matches {
+  max-height: none;
+  overflow: visible;
+}
+#editor[data-tight] .editor-foot {
+  flex: none;
+}
+#editor[data-tight] .sheet-actions {
+  box-shadow:
+    inset 0 1px #fff,
+    0 2px 8px #19374638;
+}
+@media (pointer: coarse) {
+  #editor .sheet-actions button,
+  .sheet-head .media-selector span {
+    min-height: 44px;
+  }
+}
+/* With a keyboard up, the title and year need to fit beside the print. */
+#editor[data-short] .sheet-head {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding-bottom: 5px;
+  margin-bottom: 0;
+}
+#editor[data-short] .sheet-head h2 {
+  font-size: clamp(26px, 4vw, 39px);
+}
+#editor[data-short] .media-selector span {
+  padding-inline: 7px;
+}
+#editor[data-short] .mode-switch,
+#editor[data-short] .help {
+  margin-block: 3px;
+}
+#editor[data-short] .field-label {
+  margin-bottom: 4px;
+}
+#editor[data-short] #matches {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 190px), 1fr));
+  gap: 3px 8px;
+  margin-top: 4px;
+}
+#editor[data-short] #matches .match {
+  display: grid;
+  grid-template-columns: 35px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 9px;
+  padding: 4px 5px;
+  border-bottom: 1px solid var(--hairline);
+  border-radius: 5px;
+}
+#editor[data-short] #matches .match > .icon {
+  position: static;
+  width: 17px;
+  height: 17px;
+}
+#editor[data-short] #matches .match-info strong {
+  font-size: 19px;
+}
+@media (max-width: 430px) {
+  #editor[data-short] .media-selector .icon {
+    display: none;
+  }
+}
 @property --sweep {
   syntax: '<angle>';
   initial-value: 180deg;

@@ -210,10 +210,21 @@ export function removeFrame(row) {
     );
   else ghost.remove();
 }
+let requestedCounters = false;
+export function prepareCounters() {
+  if (requestedCounters || window.gsap || !canMove()) return;
+  requestedCounters = true;
+  const script = document.createElement('script');
+  script.src = new URL('../assets/vendor/gsap.min.js', import.meta.url).href;
+  script.fetchPriority = 'low';
+  document.head.append(script);
+}
+
 export function statistic(node, value, format) {
   const next = String(value);
   if (node.dataset.value === next) return;
   const last = parseFloat(node.textContent);
+  if (node.hasAttribute('data-value')) prepareCounters();
   node.dataset.value = next;
   counters.get(node)?.kill();
   counters.delete(node);
@@ -361,8 +372,14 @@ export async function hideDialog(dialog, opener, id) {
   const poster = detail && dialog.querySelector('#detail-poster');
   // Sample the in-flight pose before interruption, then measure the untransformed destination.
   const current = poster && canMove() && getComputedStyle(poster).transform;
-  cancelInside(dialog);
   if (canMove()) {
+    // Preserve the exposure of the reading glass and captions through an interrupted close.
+    for (const [node, effect] of running) {
+      if (node !== poster && dialog.contains(node)) effect.pause();
+    }
+    if (poster) stopMotion(poster);
+    const style = getComputedStyle(dialog);
+    const start = { opacity: style.opacity, translate: style.translate, scale: style.scale };
     let exit;
     if (poster) {
       const target = offset(originBox(opener, id), poster.getBoundingClientRect());
@@ -374,7 +391,7 @@ export async function hideDialog(dialog, opener, id) {
         easing: timing.return,
       });
     } else
-      exit = play(dialog, [{ opacity: 1 }, { translate: '0 9px', scale: 0.985, opacity: 0 }], {
+      exit = play(dialog, [start, { translate: '0 9px', scale: 0.985, opacity: 0 }], {
         duration: timing.tap,
       });
     await exit?.finished.catch(() => {});
