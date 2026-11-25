@@ -2,7 +2,7 @@
 
 A personal watch journal for movies and TV series. The static frontend runs on GitHub Pages. A small Cloudflare Worker handles optional TMDB catalog requests. Collection data stays in the browser.
 
-The journal opens onto a screening room overlooking the cinema street. Browse mounted posters, jump to a title in the filmstrip, or open its full-window projection. Swipe, use the arrow keys or choose a print to bring it forward. **Ambient motion** in the footer pauses the moving weather. [Motion recordings, measurements and verification](docs/phase-2d/) · [Screening room layout and device captures](docs/screening-room/) · [Earlier spatial design](docs/phase-2c-1/) · [Splice identity](docs/phase-2b/) · [Cinema street](docs/phase-2a/)
+The journal opens onto a screening room overlooking the cinema street. Browse mounted posters, jump to a title in the filmstrip, or open its full-window projection. Swipe, use the arrow keys or choose a print to bring it forward. **Ambient motion** in the footer pauses the moving weather. [Final visual and performance review](docs/phase-2e/) · [Motion design](docs/phase-2d/) · [Screening room layout](docs/screening-room/) · [Earlier spatial design](docs/phase-2c-1/) · [Splice identity](docs/phase-2b/) · [Cinema street](docs/phase-2a/)
 
 ## What works
 
@@ -59,6 +59,7 @@ Browsing, searching, editing, rating, and deleting saved entries work when TMDB 
 - `worker/index.mjs` implements the proxy and maps TMDB’s movie and TV fields into a common shape.
 - Run `node --test tests/*.test.mjs` with Node 22.7 or newer for the storage and Worker contract tests. Test fixtures are isolated from the application and require no credential.
 - With Python Playwright and Chromium installed, run `python3 tests/picker.browser.py` to exercise keyboard media selection, catalog retry, preview cleanup, rating persistence, and navigation between the poster stage, filmstrip and title projection. The check starts a temporary local server and uses a fresh browser profile.
+- Start the local preview, then run `python3 tests/motion.browser.py http://localhost:8000/` and `python3 tests/finish.browser.py http://localhost:8000/` to check motion interruptions, focus restoration, compact catalog layouts, and concurrent access to the archive.
 
 Browser validation covered migration, CRUD in both sections, reload and full browser restart, cross-tab updates, failed artwork, unavailable storage, keyboard dialogs, and layouts from 320 to 1440 pixels. The search and details flow was tested through the Worker with an isolated upstream test fixture. Wrangler packaged the Worker successfully. During Phase 2A, cloud requests to the deployed Worker and the image CDN returned HTTP 403. The visual walkthrough records the local integration coverage.
 

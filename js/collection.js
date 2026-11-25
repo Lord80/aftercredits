@@ -84,10 +84,14 @@ function write(next) {
 const withLock = (task) =>
   navigator.locks ? navigator.locks.request(STORAGE_KEY, async () => task()) : task();
 
-export function initialize() {
-  return withLock(() => {
-    if (read() && !memoryOnly) write(items);
-  });
+export async function initialize() {
+  // Reading v2 is atomic. Only the legacy copy needs to coordinate with writers.
+  if (read() && !memoryOnly) {
+    await withLock(() => {
+      if (read() && !memoryOnly) write(items);
+    });
+  }
+  return { items, notice };
 }
 
 export function snapshot() {

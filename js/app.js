@@ -10,6 +10,7 @@ import {
   entrance,
   editedFrame,
   setupAtmosphere,
+  prepareCounters,
   play,
   canMove,
   timing,
@@ -55,8 +56,7 @@ lens.className = 'tab-lens';
 lens.setAttribute('aria-hidden', 'true');
 let toastTimer;
 
-function refresh() {
-  const state = snapshot();
+function refresh(state = snapshot()) {
   // A storage read parses new objects. Keep equal snapshots referentially stable for the strip and stage.
   const next = new Map();
   movies = state.items.map((item) => {
@@ -109,6 +109,10 @@ function render() {
     }
   }
   const selected = selectMovies(group, query.value, order.value);
+  const gallery = results.parentElement;
+  if (selected.length && byId('storage-note').hidden)
+    gallery.style.setProperty('--frames', selected.length);
+  else gallery.style.removeProperty('--frames');
   if (selected.length) {
     let list = results.querySelector('.movie-list');
     if (!list) {
@@ -121,10 +125,11 @@ function render() {
       if (!cardNodes.has(entry)) cardNodes.set(entry, movieRow(entry));
       return cardNodes.get(entry);
     });
-    // Reorder a large sort in one DOM transaction. Ordinary additions retain their focused controls.
+    // A state-preserving move keeps decoded prints, skipped layouts and keyboard focus attached.
+    // Older engines can batch a large reorder when focus is outside the strip.
     const first = list.firstElementChild;
     if (
-      cards.length > 24 &&
+      !list.moveBefore && cards.length > 24 &&
       first &&
       first !== cards[0] &&
       !list.contains(document.activeElement)
@@ -133,10 +138,12 @@ function render() {
     } else {
       const retained = new Set(cards);
       for (const card of [...list.children]) if (!retained.has(card)) card.remove();
-      cards.forEach((card, index) => {
-        const atIndex = list.children[index];
-        if (atIndex !== card) list.insertBefore(card, atIndex ?? null);
-      });
+      let next = list.firstElementChild;
+      for (const card of cards) {
+        if (card === next) next = next.nextElementSibling;
+        else if (list.moveBefore && card.parentElement === list) list.moveBefore(card, next);
+        else list.insertBefore(card, next);
+      }
     }
     reveal(list, previous);
   } else {
@@ -171,6 +178,25 @@ function highlightRating() {
   byId('decrease').disabled = value <= 1;
 }
 
+function fitEditor() {
+  const viewport = window.visualViewport;
+  const visual = viewport && viewport.scale === 1;
+  const height = visual ? viewport.height : window.innerHeight;
+  editor.toggleAttribute('data-tight', height <= 740);
+  editor.toggleAttribute('data-short', height <= 480);
+  if (height <= 740) {
+    editor.style.setProperty('--usable-height', height + 'px');
+    const inset = visual ? Math.max(0, window.innerHeight - height - viewport.offsetTop) : 0;
+    editor.style.setProperty('--keyboard-inset', inset + 'px');
+  }
+}
+function resizeEditor() {
+  if (editor.open) fitEditor();
+}
+window.addEventListener('resize', resizeEditor);
+window.visualViewport?.addEventListener('resize', resizeEditor);
+window.visualViewport?.addEventListener('scroll', resizeEditor);
+
 function openPanel(action, film, button) {
   subject = film?.id ?? null;
   opener = button;
@@ -182,6 +208,7 @@ function openPanel(action, film, button) {
     dialog.querySelector('.detail-close').focus({ preventScroll: true });
     return;
   }
+  prepareCounters();
   if (action === 'delete') {
     byId('delete-copy').textContent = '“' + film.title + '” will be deleted from your collection.';
     showDialog(confirm, button);
@@ -196,6 +223,7 @@ function openPanel(action, film, button) {
   title.removeAttribute('aria-invalid');
   highlightRating();
   startPicker(film?.mediaType ?? section, Boolean(film));
+  fitEditor();
   showDialog(editor, button);
   focusPicker();
 }
@@ -371,12 +399,5 @@ document.querySelector('.projector').addEventListener('keydown', (event) => {
   stepFrame(event.key === 'ArrowLeft' ? -1 : 1);
 });
 setupAtmosphere();
-await initialize();
-refresh();
+refresh(await initialize());
 entrance();
-
-// Exact statistics and all controls are ready before loading the optional counter animator.
-const countersScript = document.createElement('script');
-countersScript.src = new URL('../assets/vendor/gsap.min.js', import.meta.url).href;
-countersScript.fetchPriority = 'low';
-document.head.append(countersScript);

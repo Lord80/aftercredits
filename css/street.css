@@ -325,7 +325,11 @@
   max-width: 52px;
   text-transform: uppercase;
 }
+body:has(#editor[open], #confirm[open]) .dock {
+  opacity: 0.12;
+}
 .dock {
+  transition: opacity var(--motion-tap) var(--ease-out);
   position: fixed;
   z-index: 6;
   left: 50%;
@@ -589,15 +593,19 @@
     inset -1px -1px 3px #15384c80;
   background: linear-gradient(123deg, #edfbff38, transparent 31% 78%, #f8fffa33);
 }
+.stage-space[data-pair] {
+  --pair-offset: calc(-0.38 * var(--separation));
+}
 .mount[data-slot='left'] {
   transform: translate3d(calc(-1 * var(--separation)), -7px, -120px) rotateY(30deg) rotateZ(-8deg)
     scale(0.87);
 }
 .mount[data-slot='right'] {
-  transform: translate3d(var(--separation), -9px, -110px) rotateY(-28deg) rotateZ(8deg) scale(0.89);
+  transform: translate3d(calc(var(--separation) + var(--pair-offset, 0px)), -9px, -110px)
+    rotateY(-28deg) rotateZ(8deg) scale(0.89);
 }
 .mount[data-slot='center'] {
-  transform: translate3d(0, 0, 23px) rotateY(-7deg) rotateZ(-2deg);
+  transform: translate3d(var(--pair-offset, 0px), 0, 23px) rotateY(-7deg) rotateZ(-2deg);
 }
 @media (hover: hover) {
   .mount:hover::after {
@@ -724,6 +732,10 @@
   pointer-events: none;
 }
 .gallery {
+  --frame-width: clamp(190px, 17.2vw, 265px);
+  /* Empty states and storage notices use the full available width. */
+  --strip-length: calc(18px + var(--frames) * var(--frame-width));
+  inline-size: min(100%, var(--strip-length, 100%));
   position: relative;
   isolation: isolate;
   color: #f8f7ee;
@@ -754,9 +766,7 @@
   left: 3%;
   width: 94%;
   height: 18px;
-  background: #152f4166;
-  border-radius: 50%;
-  filter: blur(7px);
+  background: radial-gradient(ellipse, #152f415c, transparent 72%);
 }
 .movie-list {
   margin: 0;
@@ -1099,7 +1109,7 @@
 }
 @supports ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
   .gallery::before {
-    background: linear-gradient(103deg, #193746d6, #24475bc0 54%, #32435bd6);
+    background: linear-gradient(103deg, #163342ed, #1f3f50da 54%, #2a3b51df);
     -webkit-backdrop-filter: blur(10px) saturate(1.18);
     backdrop-filter: blur(10px) saturate(1.18);
   }
@@ -1171,4 +1181,35 @@ body:has(dialog[open]) .rain-light i,
 body:has(dialog[open]) .sea-mist::after,
 body:has(dialog[open]) .near-flowers {
   animation-play-state: paused;
+}
+
+@media (max-width: 620px) and (max-resolution: 1.5dppx),
+  (max-width: 420px) and (max-resolution: 2dppx) {
+  .ribbon {
+    background-image: url(../assets/images/street/glass-film-compact.webp);
+  }
+}
+@media (pointer: coarse) {
+  .shuttle button,
+  .strip-controls button,
+  .actions .icon-button {
+    min-width: 44px;
+    min-height: 44px;
+  }
+  .shuttle .icon,
+  .strip-controls .icon {
+    width: 16px;
+    height: 16px;
+  }
+  .toolbar :is(input, select) {
+    min-height: 44px;
+  }
+}
+@media (max-width: 365px) {
+  .toolbar {
+    gap: 6px;
+  }
+  .sort {
+    padding-left: 7px;
+  }
 }

@@ -24,9 +24,9 @@ export const latestFrame = () => newest;
 export const rememberFrame = (type, id) => remembered.set(type, id);
 let departing;
 
-function drawMount(button, entry, origins, prints, direction) {
+function drawMount(button, entry, origins, prints, direction, reframe) {
   const prior = mounted.get(button);
-  if (prior === entry) return;
+  if (prior === entry && !reframe) return;
   stopMotion(button);
   mounted.set(button, entry);
   button.hidden = !entry;
@@ -44,7 +44,7 @@ function drawMount(button, entry, origins, prints, direction) {
   name.className = 'sr-only';
   name.textContent = (center ? 'Open details for ' : 'Show poster for ') + entry.title;
   button.append(frame, name);
-  if (!origins || prior?.id === entry.id) return;
+  if (!origins || (prior?.id === entry.id && !reframe)) return;
   const from = origins.get(entry.id);
   const destination = getComputedStyle(button).transform;
   const start =
@@ -128,7 +128,10 @@ function paint(move = false, direction = 1, follow = false) {
   if (origins && shown && !trio.some((e) => e?.id === shown.id) && prints.has(shown.id)) {
     releasePrint(prints.get(shown.id).node, origins.get(shown.id).pose, direction);
   }
-  trio.forEach((entry, i) => drawMount(mounts[i], entry, origins, prints, direction));
+  const paired = count === 2;
+  const reframe = space.hasAttribute('data-pair') !== paired;
+  space.toggleAttribute('data-pair', paired);
+  trio.forEach((entry, i) => drawMount(mounts[i], entry, origins, prints, direction, reframe));
   if (animate && active !== shown) {
     stageCaptions(direction);
     if (!active)
