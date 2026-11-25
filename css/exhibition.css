@@ -60,12 +60,14 @@
   flex: 0 0 clamp(190px, 17.2vw, 265px);
   min-width: 0;
   scroll-snap-align: start;
-  content-visibility: auto;
-  contain-intrinsic-block-size: auto 84px;
   display: grid;
   grid-template-rows: 1fr auto;
   padding: 6px 10px;
   border-left: 1px solid #c1dce447;
+}
+.movie-list[data-long] > .poster-card {
+  content-visibility: auto;
+  contain-intrinsic-block-size: auto 84px;
 }
 .poster-card:first-child {
   border-left: 0;

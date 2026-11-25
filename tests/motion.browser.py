@@ -70,6 +70,23 @@ def exercise(browser, animation_mode):
     ctx.close()
 
 
+def check_phone_artwork(browser):
+    ctx = browser.new_context(viewport=dict(width=320, height=568), is_mobile=True,
+                              has_touch=True, reduced_motion="reduce")
+    ctx.route("https://image.tmdb.org/**", lambda route: route.abort())
+    page = ctx.new_page()
+    page.goto(URL)
+    items = [dict(entries[0], title="A long film title " * 35,
+                  metadata=dict(posterPath="/missing.jpg")), entries[1]]
+    page.evaluate("([k,v])=>localStorage.setItem(k,v)", [KEY, json.dumps(dict(version=2,entries=items))])
+    page.reload()
+    card = page.locator('[data-film="1"]')
+    expect(card).to_be_attached()
+    expect(card.locator("img")).to_have_count(0)
+    expect(card.locator(".bookplate")).to_be_visible()
+    ctx.close()
+
+
 def check_visibility(browser):
     ctx = browser.new_context()
     page = ctx.new_page()
@@ -96,6 +113,7 @@ with sync_playwright() as pw:
                                   ignore_default_args=["--disable-back-forward-cache"])
     for mode in ["normal", "unavailable", "rejected"]:
         exercise(chromium, mode)
+    check_phone_artwork(chromium)
     check_visibility(chromium)
     chromium.close()
 print("Passed rapid navigation, interrupted projection, resize, focus restoration, atmosphere lifecycle, saving under sorting and animation fallbacks.")

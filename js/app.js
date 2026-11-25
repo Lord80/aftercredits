@@ -116,6 +116,7 @@ function render() {
       list.className = 'movie-list';
       results.replaceChildren(list);
     }
+    list.toggleAttribute('data-long', selected.length > 24);
     const cards = selected.map((entry) => {
       if (!cardNodes.has(entry)) cardNodes.set(entry, movieRow(entry));
       return cardNodes.get(entry);
