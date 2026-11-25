@@ -1,4 +1,5 @@
 import { configured, details, imageUrl, search } from './catalog.js';
+import { arrive, canMove, focusPrint, timing } from './motion.js';
 import { resultButton } from './views.js';
 
 const get = (id) => document.getElementById(id);
@@ -39,6 +40,11 @@ function setMode(value) {
   get('manual-panel').hidden = lookup;
   get('catalog-panel').hidden = !lookup;
   get('title').required = !lookup;
+  if (get('editor').open)
+    arrive(lookup ? get('catalog-panel') : get('manual-panel'), {
+      translate: '0 5px',
+      opacity: 0.69,
+    });
   if (lookup && query.value.trim()) schedule();
 }
 function schedule() {
@@ -56,11 +62,23 @@ function schedule() {
       status.textContent = hits.length
         ? 'Select the title you watched.'
         : 'No titles found. Try the original title or a different spelling.';
+      const batch = document.createDocumentFragment();
       for (const item of hits) {
         const button = resultButton(item);
-        button.addEventListener('click', () => choose(item));
-        list.append(button);
+        button.addEventListener('click', () => choose(item, button));
+        batch.append(button);
       }
+      list.append(batch);
+      if (canMove())
+        [...list.children]
+          .slice(0, 6)
+          .forEach((button, i) =>
+            arrive(
+              button,
+              { translate: '0 8px', scale: 0.97, opacity: 0.55 },
+              { delay: (i * timing.beat) / 2 }
+            )
+          );
     } catch (error) {
       if (signal.aborted) return;
       status.textContent = error.message.includes('busy')
@@ -73,7 +91,8 @@ function schedule() {
     }
   }, 300);
 }
-async function choose(item) {
+async function choose(item, button) {
+  const source = canMove() && button.querySelector('.artwork').getBoundingClientRect();
   resetResults();
   controller = new AbortController();
   const signal = controller.signal;
@@ -92,7 +111,8 @@ async function choose(item) {
   panel.append(selected);
   status.dataset.loading = 'true';
   status.textContent = 'Loading title details…';
-  selected.focus();
+  selected.focus({ preventScroll: true });
+  focusPrint(selected.querySelector('.artwork'), source);
   try {
     const full = await details(item, signal);
     if (signal.aborted) return;
@@ -104,6 +124,9 @@ async function choose(item) {
       image.alt = '';
       image.decoding = 'async';
       image.addEventListener('error', () => image.remove(), { once: true });
+      image.onload = () => {
+        image.dataset.loaded = '';
+      };
       image.src = backdrop;
       selected.prepend(image);
     }
@@ -141,7 +164,12 @@ get('retry').addEventListener('click', () => {
   schedule();
   query.focus();
 });
-get('add-type').addEventListener('change', () => {
+get('add-type').addEventListener('change', (event) => {
+  arrive(
+    event.target.closest('label').querySelector('.icon'),
+    { translate: (type.value === 'tv' ? '-3px' : '3px') + ' 0', scale: 0.86 },
+    { duration: timing.tap }
+  );
   setMode(mode);
 });
 export function startPicker(mediaType, isEdit) {

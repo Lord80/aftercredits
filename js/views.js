@@ -157,6 +157,9 @@ export function presentDetails(dialog, entry) {
     image.alt = '';
     image.decoding = 'async';
     image.addEventListener('error', () => image.remove(), { once: true });
+    image.onload = () => {
+      image.dataset.loaded = '';
+    };
     banner.append(image);
     image.srcset = backdrop + ' 1x, ' + imageUrl(meta.backdropPath, 'w1280') + ' 2x';
     image.src = backdrop;

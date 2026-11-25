@@ -142,6 +142,7 @@ export function changeMovie({ action, id, title, rating, mediaType, match }) {
         },
         ...items,
       ]);
+      return newId;
     }
   });
 }

@@ -60,6 +60,8 @@
   flex: 0 0 clamp(190px, 17.2vw, 265px);
   min-width: 0;
   scroll-snap-align: start;
+  content-visibility: auto;
+  contain-intrinsic-block-size: auto 84px;
   display: grid;
   grid-template-rows: 1fr auto;
   padding: 6px 10px;
