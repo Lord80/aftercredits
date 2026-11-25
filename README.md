@@ -4,11 +4,14 @@ A personal watch journal for movies and TV series. The static frontend runs on G
 
 The journal opens onto a screening room overlooking the cinema street. Browse mounted posters, jump to a title in the filmstrip, or open its full-window projection. Swipe, use the arrow keys or choose a print to bring it forward. **Ambient motion** in the footer pauses the moving weather. [Final visual and performance review](docs/phase-2e/) · [Motion design](docs/phase-2d/) · [Screening room layout](docs/screening-room/) · [Earlier spatial design](docs/phase-2c-1/) · [Splice identity](docs/phase-2b/) · [Cinema street](docs/phase-2a/)
 
+Open **Data Vault** in the footer to download a full JSON backup, export CSV, compare an incoming file or recover a previous collection. A restore requires a separate download of the current collection and explicit confirmation. Keep the resulting backup file outside this browser. [Vault guide, screenshots and file specification](docs/phase-3a/) · [Proposed cloud schema](docs/phase-3a/phase-3b.md)
+
 ## What works
 
 | Capability | Availability |
 | --- | --- |
 | Separate Movies and TV Series collections, manual entry, half-point ratings, editing, confirmed deletion, search, four sort orders, totals and average rating | Available on first visit |
+| JSON backup, CSV export, previewed merge, full restore and bounded recovery history | Local to this browser. Applying an import requires Web Locks and sufficient storage. |
 | Migration from the original film journal, persistent personal ratings, cached title details, cross-tab updates | Available without an API connection |
 | Live catalog search, exact-title selection, official posters, and richer detail views | Uses the public Worker configured in `js/config.js`. New deployments can follow the setup below. |
 | Filtering by genre, year, language, and rating | Planned. The data model already retains the relevant fields. |

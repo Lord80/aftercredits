@@ -1,0 +1,319 @@
+#vault-open {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 34px;
+  padding: 6px 12px;
+  border: 1px solid #effbff;
+  border-radius: 20px;
+  background: #e6f2f2ea;
+  color: var(--brand-ink);
+  font: 11px var(--mono);
+  box-shadow: var(--bevel);
+}
+#vault-open {
+  scroll-margin-block-end: 92px;
+}
+#vault-open .icon {
+  width: 14px;
+  height: 14px;
+}
+#vault-open[data-due]::after {
+  content: '';
+  width: 7px;
+  height: 7px;
+  background: #a44f29;
+  border-radius: 50%;
+}
+#vault {
+  --wash: #e5f0f1eb;
+  width: min(850px, calc(100% - 28px));
+  margin: auto;
+  padding: clamp(17px, 3vw, 32px);
+  overflow-wrap: anywhere;
+}
+#vault[open] {
+  display: flex;
+  flex-direction: column;
+}
+#vault .vault-head {
+  flex: none;
+}
+#vault .vault-layout {
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  padding: 4px;
+  margin: -4px;
+}
+#vault:has(#vault-preview:not([hidden])) #vault-import > :is(h3, p) {
+  display: none;
+}
+#vault::backdrop {
+  background: #193a4c62;
+}
+.vault-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 19px;
+}
+.vault-head h2 {
+  margin: 0;
+}
+.vault-layout {
+  display: grid;
+  grid-template-columns: minmax(185px, 0.76fr) minmax(0, 1.4fr);
+  gap: clamp(16px, 3vw, 30px);
+  align-items: start;
+}
+.vault-ledger {
+  color: #f6f7ef;
+  background: linear-gradient(140deg, #294e5af5, #173d48f2 78%, #344d54f2);
+  border: 1px solid #a1bbc3;
+  border-radius: 16px 5px 16px 5px;
+  box-shadow:
+    inset 0 1px #bde1e56b,
+    0 6px 17px #153e4626;
+  padding: clamp(15px, 2vw, 23px);
+}
+#vault h3 {
+  font: 400 clamp(26px, 3.2vw, 36px)/1.08 var(--serif);
+  margin: 0 0 10px;
+}
+#vault h4 {
+  font:
+    600 15px/1.4 'DM Sans',
+    sans-serif;
+  margin: 0;
+}
+#vault p {
+  margin: 8px 0 15px;
+  font-size: 14px;
+  line-height: 1.5;
+}
+#vault dl {
+  margin: 0;
+}
+#vault dd {
+  margin: 0;
+}
+.vault-counts {
+  display: flex;
+  gap: 23px;
+  border-block-end: 1px solid #c9e2df52;
+  padding-block: 10px 16px;
+}
+.vault-counts div {
+  display: flex;
+  flex-direction: column-reverse;
+}
+.vault-counts dt,
+.vault-facts dt,
+.vault-summary dt {
+  font: 10px/1.4 var(--mono);
+  letter-spacing: 0.035em;
+}
+.vault-counts dd {
+  font: 42px/1 var(--serif);
+  font-variant-numeric: lining-nums tabular-nums;
+}
+.vault-facts {
+  display: grid;
+  gap: 12px;
+  padding-block: 17px;
+}
+.vault-facts dt {
+  color: #c0d8dc;
+}
+.vault-facts dd {
+  font-size: 14px;
+}
+#vault .vault-ledger p {
+  border-top: 1px solid #c9e2df52;
+  padding-top: 13px;
+  margin: 0;
+  font-size: 12px;
+  color: #deebec;
+}
+.vault-nav {
+  display: flex;
+  gap: 2px;
+  border-bottom: 1px solid var(--etch);
+  margin-bottom: 20px;
+}
+.vault-nav button {
+  background: transparent;
+  min-height: 42px;
+  padding: 4px 12px;
+  color: #3e5c66;
+}
+.vault-nav [aria-pressed='true'] {
+  color: var(--brand-ink);
+  font-weight: 700;
+  box-shadow: inset 0 -2px var(--brand-light);
+}
+.vault-rule {
+  padding-top: 15px;
+  margin-top: 18px;
+  border-top: 1px solid var(--etch);
+}
+.vault-work .button {
+  min-height: 42px;
+}
+.vault-file {
+  position: relative;
+  display: inline-flex;
+  cursor: pointer;
+  overflow: hidden;
+}
+.vault-file input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  opacity: 0;
+  cursor: pointer;
+}
+.vault-file:focus-within {
+  outline: 3px solid #554587;
+  outline-offset: 3px;
+}
+.vault-modes {
+  display: flex;
+  gap: 12px;
+  border: 0;
+  padding: 0;
+  margin: 14px 0 0;
+}
+.vault-modes legend {
+  font-weight: 600;
+  font-size: 13px;
+}
+#vault input {
+  accent-color: #255762;
+}
+.vault-modes label,
+.vault-warning label,
+.vault-conflict label {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 42px;
+  cursor: pointer;
+  font-size: 14px;
+}
+.vault-summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(78px, 1fr));
+  gap: 9px;
+}
+.vault-summary div {
+  border-top: 1px solid var(--etch);
+  padding-top: 4px;
+}
+.vault-summary dd {
+  font-size: 18px;
+  font-variant-numeric: tabular-nums;
+}
+.vault-warning,
+.vault-reminder {
+  background: #fff2de;
+  color: #623d29;
+  border-left: 3px solid #a95e37;
+  padding: 10px 13px;
+  margin: 12px 0;
+}
+#vault .vault-warning p {
+  margin: 3px 0 8px;
+}
+.vault-conflict {
+  padding: 9px 0;
+  border-top: 1px solid var(--etch);
+  font-size: 13px;
+}
+.vault-conflict summary {
+  cursor: pointer;
+}
+.vault-conflict pre {
+  white-space: pre-wrap;
+  max-height: 180px;
+  overflow: auto;
+  font: 11px/1.45 var(--mono);
+}
+.vault-reminder {
+  font-size: 13px;
+}
+.vault-reminder button {
+  display: block;
+}
+#vault-history button {
+  display: block;
+  margin: 7px 0;
+  text-align: left;
+}
+#vault-message:empty {
+  margin: 0;
+}
+#vault-message:not(:empty) {
+  padding: 8px 10px;
+  background: #e4f3ee;
+  border-left: 2px solid var(--accent);
+}
+#vault-message[data-error] {
+  color: #662d25;
+  background: #fff0e8;
+}
+@media (max-width: 620px) {
+  #vault {
+    width: calc(100% - 10px);
+    max-height: calc(100dvh - max(14px, env(safe-area-inset-bottom)));
+  }
+  .vault-layout {
+    grid-template-columns: 1fr;
+  }
+  .vault-head {
+    margin-bottom: 10px;
+  }
+  .vault-ledger {
+    padding: 12px 15px;
+    display: grid;
+    grid-template-columns: 1fr auto;
+    align-items: center;
+    gap: 4px 8px;
+  }
+  #vault .vault-ledger h3 {
+    font-size: 25px;
+    margin: 0;
+  }
+  .vault-counts {
+    border: 0;
+    padding: 0;
+    gap: 12px;
+  }
+  .vault-counts dd {
+    font-size: 28px;
+  }
+  .vault-facts {
+    grid-column: 1/-1;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+    padding: 8px 0;
+  }
+  .vault-facts dd {
+    font-size: 12px;
+  }
+  #vault .vault-ledger p {
+    grid-column: 1/-1;
+    padding-top: 7px;
+  }
+  .vault-nav {
+    margin-bottom: 12px;
+  }
+}
+@media (pointer: coarse) {
+  #vault-open,
+  #vault button,
+  .vault-file {
+    min-height: 44px;
+  }
+}
