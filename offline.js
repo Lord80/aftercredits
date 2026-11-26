@@ -3,7 +3,7 @@ import { projectUrl, publishableKey } from './js/cloud-config.js';
 // Public app files only. Scope-qualified cache names also isolate other Pages projects on this origin.
 const scope = self.registration.scope;
 const cachePrefix = 'aftercredits-shell:' + scope + ':';
-const cacheName = cachePrefix + '3b.1:' + projectUrl + ':' + publishableKey;
+const cacheName = cachePrefix + '4a.1:' + projectUrl + ':' + publishableKey;
 const paths = [
   './',
   './index.html',
@@ -12,12 +12,17 @@ const paths = [
   './css/exhibition.css',
   './css/dialogs.css',
   './css/vault.css',
+  './css/discovery.css',
   ...[
     'app',
     'backup',
     'catalog',
     'cloud-config',
     'collection',
+    'discovery',
+    'discovery-preferences',
+    'discovery-controls',
+    'library',
     'config',
     'filmstrip',
     'import-plan',

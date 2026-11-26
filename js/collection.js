@@ -1,7 +1,6 @@
 import {
   cleanTitle,
   equal,
-  titleKey,
   validRating,
   validType,
   validEntry,
@@ -182,14 +181,4 @@ export function changeMovie({ action, id, title, rating, mediaType, match, origi
   });
 }
 
-const collator = new Intl.Collator(undefined, { sensitivity: 'base', numeric: true });
-export function selectMovies(movies, query, order) {
-  const key = titleKey(query);
-  const result = movies.filter((movie) => titleKey(movie.title).includes(key));
-  return result.sort((a, b) => {
-    if (order === 'alpha') return collator.compare(a.title, b.title);
-    if (order === 'highest' && a.rating !== b.rating) return b.rating - a.rating;
-    if (order === 'lowest' && a.rating !== b.rating) return a.rating - b.rating;
-    return Date.parse(b.added) - Date.parse(a.added);
-  });
-}
+export { selectMovies } from './discovery.js';

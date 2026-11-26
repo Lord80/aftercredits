@@ -62,6 +62,7 @@ def download(page, selector):
 
 def seeded(browser, **options):
     ctx = browser.new_context(accept_downloads=True, **options)
+    ctx.route("**/js/cloud-config.js", lambda r: r.fulfill(content_type="text/javascript", body="export const projectUrl='', publishableKey='';"))
     ctx.route("https://image.tmdb.org/**", lambda r: r.abort())
     page = ctx.new_page()
     page.goto(URL)

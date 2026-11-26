@@ -144,6 +144,7 @@ export function stageCaptions(direction) {
 // Uniform-width strip frames let us bound both layout reads and animation work to the viewport.
 function visibleRows(list) {
   if (!list?.firstElementChild) return [];
+  if (list.classList.contains('library-list')) return [...list.children].slice(0, 6);
   if (!list.classList.contains('movie-list')) return [list.firstElementChild];
   const width = list.firstElementChild.offsetWidth;
   if (!width) return [];

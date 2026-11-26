@@ -4,18 +4,20 @@ A personal watch journal for movies and TV series. The static frontend runs on G
 
 The journal opens onto a screening room overlooking the cinema street. Browse mounted posters, jump to a title in the filmstrip, or open its full-window projection. Swipe, use the arrow keys or choose a print to bring it forward. **Ambient motion** in the footer pauses the moving weather. [Final visual and performance review](docs/phase-2e/) · [Motion design](docs/phase-2d/) · [Screening room layout](docs/screening-room/) · [Earlier spatial design](docs/phase-2c-1/) · [Splice identity](docs/phase-2b/) · [Cinema street](docs/phase-2a/)
 
+Use **Gallery** to browse by poster or **Compact** for a denser list. Search personal, catalog and original titles, then open **Filters** to narrow the current section. Views and filters work offline and stay on this device. [Discovery guide, screenshots and performance measurements](docs/phase-4a/)
+
 Open **Data Vault** in the footer to download a full JSON backup, export CSV, compare an incoming file or recover a previous collection. A restore requires a separate download of the current collection and explicit confirmation. Keep the resulting backup file outside this browser. [Vault guide, screenshots and file specification](docs/phase-3a/) · [Private cloud setup, sync and screenshots](docs/phase-3b/)
 
 ## What works
 
 | Capability | Availability |
 | --- | --- |
-| Separate Movies and TV Series collections, manual entry, half-point ratings, editing, confirmed deletion, search, four sort orders, totals and average rating | Available on first visit |
+| Separate Movies and TV Series collections, manual entry, half-point ratings, editing, confirmed deletion, locally ranked search, totals and average rating | Available on first visit |
 | JSON backup, CSV export, previewed merge, full restore and bounded recovery history | Local to this browser. Applying an import requires Web Locks and sufficient storage. |
 | Private accounts, offline editing, cross-device sync and conflict review | Optional. Configure a Supabase project, then open **Data Vault → Account**. [Browser deployment guide](docs/phase-3b/) |
 | Migration from the original film journal, persistent personal ratings, cached title details, cross-tab updates | Available without an API connection |
 | Live catalog search, exact-title selection, official posters, and richer detail views | Uses the public Worker configured in `js/config.js`. New deployments can follow the setup below. |
-| Filtering by genre, year, language, and rating | Planned. The data model already retains the relevant fields. |
+| Gallery, compact list, combined filters and sorting by relevance, title, rating, release or date added | Available in guest and account archives. Each section remembers its filters. |
 
 Choose **Movies** or **TV Series**, then **Add a title**. With the catalog connected, search by title, choose the correct poster and year, set your rating, and save. Anime films and series use the same two TMDB catalogs and can be searched by their original or translated names. **Enter manually** also works without TMDB. Use the side posters, arrow buttons or a horizontal swipe to browse. Select the center poster or a filmstrip title to see its description, genres, release or first-air date, language, backdrop, and personal rating when available. Each filmstrip entry has visible edit and remove controls. The collection totals cover both sections.
 
@@ -57,7 +59,7 @@ Browsing, searching, editing, rating, and deleting saved entries work when TMDB 
 ## Implementation and verification
 
 - `js/cloud/` handles optional auth, account-scoped storage, three-way comparison and synchronization. The SQL migration and security boundaries are documented in the [private cloud guide](docs/phase-3b/).
-- `js/collection.js` owns versioning, migration, validation, identity, and sorting.
+- `js/collection.js` manages the active archive. `js/discovery.js` indexes saved records, counts filter options and orders local results.
 - `js/catalog.js` calls the proxy and builds allowlisted image URLs. `js/picker.js` manages debouncing, cancellation, selection, and partial detail recovery.
 - `js/stage.js` positions the three posters and handles stage navigation. `js/filmstrip.js` manages the archive’s native horizontal scrolling.
 - `js/app.js`, `js/views.js`, and `js/motion.js` connect the collection, picker, and title projection, including focus restoration and reduced-motion behavior.

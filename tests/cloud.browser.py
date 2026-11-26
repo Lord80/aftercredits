@@ -216,6 +216,8 @@ def run(browser, url, s, folder):
 
     pa.evaluate("([k,v])=>localStorage.setItem(k,v)", [GUEST, GUEST_BYTES])
     pa.reload()
+    pa.locator('[data-layout="gallery"]').click()
+    pa.locator("#query").fill("Window Seat")
     login(pa, email, "incorrect-password")
     expect(pa.locator(".cloud-message")).to_contain_text("declined")
     login(pa, email, pw)
@@ -223,6 +225,12 @@ def run(browser, url, s, folder):
     assert head() == 0
     assert connect(pa, True, folder) == [MOVIE, SERIES]
     assert read(pa, GUEST) == GUEST_BYTES and head() == 2
+    expect(pa.locator("body")).to_have_attribute("data-browse", "screening")
+    expect(pa.locator("#query")).to_have_value("")
+    pa.locator("#vault-close").click()
+    pa.locator('[data-layout="compact"]').click()
+    pa.locator("#query").fill("Transit")
+    account(pa)
     altered = [dict(MOVIE, rating=4), SERIES]
     pb.evaluate(
         "([k,v])=>localStorage.setItem(k,v)", [GUEST, json.dumps(dict(version=2, entries=altered))]
@@ -249,6 +257,10 @@ def run(browser, url, s, folder):
         )
         assert not failures, failures
     assert not pb.evaluate("document.documentElement.scrollWidth>innerWidth")
+    pb.locator("#vault-close").click()
+    pb.locator('[data-layout="gallery"]').click()
+    pb.locator("#query").fill("Transit")
+    account(pb)
     pg_count = lambda: int(s["sql"]("select count(*) from aftercredits_private.operations"))
     assert pg_count() == 1
     # A real transaction commits; the client never gets the reply.
@@ -327,12 +339,15 @@ def run(browser, url, s, folder):
     force(pa)
     force(pb)
     assert any(i["id"] == "imported" for i in entries(pb))
+    expect(pb.locator(".library-card")).to_have_count(1)
+    expect(pb.locator(".library-title")).to_have_text("Transit")
     upload([SERIES])
     pa.locator('[name="vault-mode"][value="restore"]').check()
     replace()
     force(pa)
     force(pb)
     assert entries(pb) == [SERIES]
+    expect(pb.locator(".library-card")).to_have_count(0)
     pa.locator('[data-vault-tab="recovery"]').click()
     pa.locator("#vault-history button").first.click()
     replace()
@@ -352,11 +367,15 @@ def run(browser, url, s, folder):
     button(pa, "Sign out").click()
     expect(button(pa, "Sign in")).to_be_visible()
     assert entries(pa) == [MOVIE, SERIES] and read(pa, GUEST) == GUEST_BYTES
+    expect(pa.locator("body")).to_have_attribute("data-browse", "gallery")
+    expect(pa.locator("#query")).to_have_value("Window Seat")
     net["block"] = False
     a.set_offline(False)
     email2, pw2, _ = s["users"][1]
     login(pa, email2, pw2)
     assert connect(pa, False) == [MOVIE, SERIES] and entries(pa) == []
+    expect(pa.locator("body")).to_have_attribute("data-browse", "screening")
+    expect(pa.locator("#query")).to_have_value("")
     pa.locator('[data-vault-tab="recovery"]').click()
     assert pa.locator("#vault-history button").count() == 0
     account(pa)
@@ -367,6 +386,8 @@ def run(browser, url, s, folder):
     force(pb)
     assert any(x["title"] == "Private queued series" for x in entries(pb))
     assert read(pa, GUEST) == GUEST_BYTES
+    expect(pa.locator("body")).to_have_attribute("data-browse", "compact")
+    expect(pa.locator("#query")).to_have_value("Transit")
     capture(pa, folder, "account-desktop")
     # Account recovery code: deliver real SMTP mail, verify a real GoTrue OTP, update the password.
     button(pa, "Sign out").click()
