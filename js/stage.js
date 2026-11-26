@@ -18,6 +18,7 @@ let index = -1;
 let shown;
 let newest;
 let highlighted;
+let showPage;
 
 export const currentFrame = () => sequence[index];
 export const latestFrame = () => newest;
@@ -95,7 +96,7 @@ function releasePrint(print, pose, direction) {
   else clear();
 }
 
-function paint(move = false, direction = 1, follow = false) {
+function paint(move = false, direction = 1, follow = false, chosen = false) {
   const active = currentFrame();
   const count = sequence.length;
   const animate = move && canMove();
@@ -182,6 +183,7 @@ function paint(move = false, direction = 1, follow = false) {
     shown = active;
     document.querySelector('.opening').classList.toggle('has-film', Boolean(active));
   }
+  if (active) showPage?.(active.id, chosen);
   highlighted?.removeAttribute('data-current');
   highlighted?.querySelector('.open-card')?.removeAttribute('aria-current');
   highlighted =
@@ -199,7 +201,8 @@ function paint(move = false, direction = 1, follow = false) {
     }
   }
 }
-export function arrangeStage(visibleEntries, group, type) {
+export function arrangeStage(visibleEntries, group, type, ensurePage) {
+  showPage = ensurePage;
   const previousSection = section;
   section = type;
   newest = group.reduce(
@@ -222,7 +225,7 @@ export function cueFrame(id, direction) {
   direction ??= Math.sign(destination - index);
   index = destination;
   remembered.set(section, currentFrame().id);
-  paint(true, direction, true);
+  paint(true, direction, true, true);
 }
 export function stepFrame(direction) {
   if (sequence.length < 2) return;

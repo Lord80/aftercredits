@@ -1,12 +1,5 @@
 import { owner, configured, reloadScope } from './cloud/scope.js';
-import {
-  changeMovie,
-  selectMovies,
-  snapshot,
-  STORAGE_KEY,
-  initialize,
-  LEGACY_KEY,
-} from './collection.js';
+import { changeMovie, snapshot, STORAGE_KEY, initialize, LEGACY_KEY } from './collection.js';
 import {
   entrance,
   editedFrame,
@@ -16,15 +9,16 @@ import {
   canMove,
   timing,
   hideDialog,
-  positions,
   accentRating,
   removeFrame,
-  reveal,
   showDialog,
   statistic,
 } from './motion.js';
 import { backupStatus, reminderDue, STATUS_KEY } from './vault-status.js';
-import { trackStrip } from './filmstrip.js';
+import { indexCollection, runQuery } from './discovery.js';
+import { loadPreferences, persistPreferences } from './discovery-preferences.js';
+import { setupDiscovery } from './discovery-controls.js';
+import { createLibrary, pageSizes } from './library.js';
 import {
   arrangeStage,
   cueFrame,
@@ -34,7 +28,7 @@ import {
   stepFrame,
 } from './stage.js';
 import { startPicker, stopPicker, focusPicker, selection } from './picker.js';
-import { emptyState, icon, movieRow, presentDetails } from './views.js';
+import { icon, presentDetails } from './views.js';
 
 const byId = (id) => document.getElementById(id);
 const results = byId('results');
@@ -52,7 +46,49 @@ let originalEntry;
 let opener = null;
 let busy = false;
 let renderFrame;
-const cardNodes = new WeakMap();
+const prefs = loadPreferences();
+for (const [type, id] of Object.entries(prefs.frames)) rememberFrame(type, id);
+let groups = indexCollection([]),
+  groupEntries = { movie: [], tv: [] },
+  selected = [],
+  page = 0;
+let lastGroup, lastQuery;
+const controls = setupDiscovery({
+  getState: () => prefs[section],
+  getRows: () => groups[section],
+  update(state) {
+    prefs[section] = state;
+    page = 0;
+    persistPreferences(prefs);
+    render();
+  },
+});
+const drawLibrary = createLibrary(results, (destination) => {
+  page = destination;
+  if (prefs.layout === 'screening')
+    rememberFrame(section, selected[page * pageSizes.screening]?.id);
+  render();
+});
+let drawing = false;
+function drawPage() {
+  drawing = true;
+  try {
+    drawLibrary(selected, prefs.layout, page, groups[section].length, section);
+  } finally {
+    drawing = false;
+  }
+}
+function ensurePage(id, chosen) {
+  if (chosen && prefs.frames[section] !== id) {
+    prefs.frames[section] = id;
+    persistPreferences(prefs);
+  }
+  const position = selected.findIndex((e) => e.id === id);
+  if (position >= 0 && Math.floor(position / pageSizes.screening) !== page) {
+    page = Math.floor(position / pageSizes.screening);
+    drawPage();
+  }
+}
 let records = new Map();
 const lens = document.createElement('i');
 lens.className = 'tab-lens';
@@ -78,14 +114,19 @@ function refresh(state = snapshot()) {
   updateVaultControl();
   // A storage read parses new objects. Keep equal snapshots referentially stable for the strip and stage.
   const next = new Map();
+  const previous = movies;
   movies = state.items.map((item) => {
-    const bytes = JSON.stringify(item);
     const prior = records.get(item.id);
+    const bytes = prior?.item === item ? prior.bytes : JSON.stringify(item);
     const record = prior?.bytes === bytes ? prior : { bytes, item };
     next.set(item.id, record);
     return record.item;
   });
   records = next;
+  if (previous.length !== movies.length || movies.some((entry, i) => entry !== previous[i])) {
+    groups = indexCollection(movies);
+    groupEntries = { movie: groups.movie.map((r) => r.entry), tv: groups.tv.map((r) => r.entry) };
+  }
   byId('storage-note').textContent = state.notice;
   byId('storage-note').hidden = !state.notice;
   statistic(byId('total'), movies.length, (n) => String(Math.round(n)).padStart(2, '0'));
@@ -93,16 +134,25 @@ function refresh(state = snapshot()) {
     ? movies.reduce((sum, film) => sum + film.rating, 0) / movies.length
     : null;
   statistic(byId('average'), mean, (n) => (n === null ? '—' : n.toFixed(1)));
-  byId('movie-count').textContent = movies.filter((m) => m.mediaType === 'movie').length;
-  byId('tv-count').textContent = movies.filter((m) => m.mediaType === 'tv').length;
+  byId('movie-count').textContent = groups.movie.length;
+  byId('tv-count').textContent = groups.tv.length;
   render();
 }
 
 function render() {
   cancelAnimationFrame(renderFrame);
-  const previous = positions(results);
+  controls.sync();
   document.body.dataset.currentSection = section;
-  const group = movies.filter((m) => m.mediaType === section);
+  document.body.dataset.browse = prefs.layout;
+  const screening = prefs.layout === 'screening';
+  byId('opening').hidden = !screening;
+  byId('collection-title').setAttribute('aria-level', screening ? '2' : '1');
+  document
+    .querySelectorAll('a.brand,a.footer-brand')
+    .forEach((a) => a.setAttribute('href', screening ? '#opening' : '#collection'));
+  document
+    .querySelectorAll('[data-layout]')
+    .forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.layout === prefs.layout)));
   document
     .querySelectorAll('[data-section]')
     .forEach((button) =>
@@ -127,60 +177,14 @@ function render() {
       );
     }
   }
-  const selected = selectMovies(group, query.value, order.value);
-  const gallery = results.parentElement;
-  if (selected.length && byId('storage-note').hidden)
-    gallery.style.setProperty('--frames', selected.length);
-  else gallery.style.removeProperty('--frames');
-  if (selected.length) {
-    let list = results.querySelector('.movie-list');
-    if (!list) {
-      list = document.createElement('ol');
-      list.className = 'movie-list';
-      results.replaceChildren(list);
-    }
-    list.toggleAttribute('data-long', selected.length > 24);
-    const cards = selected.map((entry) => {
-      if (!cardNodes.has(entry)) cardNodes.set(entry, movieRow(entry));
-      return cardNodes.get(entry);
-    });
-    // A state-preserving move keeps decoded prints, skipped layouts and keyboard focus attached.
-    // Older engines can batch a large reorder when focus is outside the strip.
-    const first = list.firstElementChild;
-    if (
-      !list.moveBefore &&
-      cards.length > 24 &&
-      first &&
-      first !== cards[0] &&
-      !list.contains(document.activeElement)
-    ) {
-      list.replaceChildren(...cards);
-    } else {
-      const retained = new Set(cards);
-      for (const card of [...list.children]) if (!retained.has(card)) card.remove();
-      let next = list.firstElementChild;
-      for (const card of cards) {
-        if (card === next) next = next.nextElementSibling;
-        else if (list.moveBefore && card.parentElement === list) list.moveBefore(card, next);
-        else list.insertBefore(card, next);
-      }
-    }
-    reveal(list, previous);
-  } else {
-    const state = section + (group.length ? '-search' : '-empty');
-    if (results.firstElementChild?.dataset.state !== state) {
-      const panel = emptyState(group.length > 0, section);
-      panel.dataset.state = state;
-      results.replaceChildren(panel);
-      reveal(results, previous);
-    }
+  if (groups[section] !== lastGroup || prefs[section] !== lastQuery) {
+    lastGroup = groups[section];
+    lastQuery = prefs[section];
+    selected = runQuery(lastGroup, lastQuery);
   }
-  arrangeStage(selected, group, section);
-  trackStrip(results.querySelector('.movie-list'));
-  byId('result-status').textContent =
-    selected.length +
-    (selected.length === 1 ? ' title' : ' titles') +
-    (query.value ? ' matching your search.' : ' in your collection.');
+  page = Math.max(0, Math.min(page, Math.ceil(selected.length / pageSizes[prefs.layout]) - 1));
+  drawPage();
+  if (screening) arrangeStage(selected, groupEntries[section], section, ensurePage);
 }
 
 function highlightRating() {
@@ -267,7 +271,7 @@ async function closePanel(dialog, updateCollection) {
         (button) => button.dataset.action === opener?.dataset.action
       ) ??
       neighbor?.querySelector('.open-card') ??
-      results.querySelector('[data-add]') ??
+      results.querySelector('.open-card, [data-clear], [data-add]') ??
       document.querySelector('.header-inner [data-add]');
   }
   target.focus({ preventScroll: true });
@@ -313,8 +317,12 @@ async function submit(event) {
       if (deleting) removeFrame(opener?.closest('[data-film]'));
       else {
         section = picked.mediaType;
-        if (action === 'add') rememberFrame(section, savedId);
-        query.value = '';
+        if (action === 'add') {
+          rememberFrame(section, savedId);
+          prefs.frames[section] = savedId;
+          persistPreferences(prefs);
+        }
+        if (action === 'add') page = 0;
       }
       refresh();
       if (action === 'edit') editedFrame(subject);
@@ -347,15 +355,19 @@ document.addEventListener('click', (event) => {
   if (!button || busy) return;
   if (button.dataset.section) {
     section = button.dataset.section;
-    query.value = '';
+    page = 0;
+    render();
+  }
+  if (button.dataset.layout && prefs.layout !== button.dataset.layout) {
+    prefs.layout = button.dataset.layout;
+    page = 0;
+    persistPreferences(prefs);
     render();
   }
   if (button.hasAttribute('data-add')) openPanel('add', null, button);
   if (button.hasAttribute('data-dismiss')) dismiss(button.closest('dialog'));
   if (button.hasAttribute('data-clear')) {
-    query.value = '';
-    render();
-    query.focus();
+    controls.clear();
   }
   if (button.id === 'return-latest' && latestFrame()) openPanel('details', latestFrame(), button);
   if (button.dataset.step) stepFrame(Number(button.dataset.step));
@@ -364,7 +376,7 @@ document.addEventListener('click', (event) => {
   if (button.dataset.action) {
     const film = movies.find((item) => item.id === button.closest('[data-film]').dataset.film);
     if (film) {
-      if (button.dataset.action === 'details') cueFrame(film.id);
+      if (prefs.layout === 'screening' && button.dataset.action === 'details') cueFrame(film.id);
       openPanel(button.dataset.action, film, button);
     }
   }
@@ -395,10 +407,18 @@ title.addEventListener('input', () => {
   title.removeAttribute('aria-invalid');
 });
 query.addEventListener('input', () => {
+  prefs[section] = { ...prefs[section], query: query.value };
+  page = 0;
+  persistPreferences(prefs);
   cancelAnimationFrame(renderFrame);
   renderFrame = requestAnimationFrame(render);
 });
-order.addEventListener('change', render);
+order.addEventListener('change', () => {
+  prefs[section] = { ...prefs[section], sort: order.value };
+  page = 0;
+  persistPreferences(prefs);
+  render();
+});
 window.addEventListener('storage', (event) => {
   if (event.key === STATUS_KEY) updateVaultControl();
   if (event.key === STORAGE_KEY || event.key === LEGACY_KEY || event.key === null) refresh();
@@ -406,15 +426,26 @@ window.addEventListener('storage', (event) => {
 
 results.addEventListener('focusin', (event) => {
   const card = event.target.closest('.open-card');
-  if (card) cueFrame(card.closest('[data-film]').dataset.film);
+  if (!drawing && card && prefs.layout === 'screening')
+    cueFrame(card.closest('[data-film]').dataset.film);
 });
 results.addEventListener('keydown', (event) => {
   const card = event.target.closest('.open-card')?.closest('[data-film]');
-  if (!card || !['ArrowLeft', 'ArrowRight'].includes(event.key)) return;
+  if (prefs.layout !== 'screening' || !card || !['ArrowLeft', 'ArrowRight'].includes(event.key))
+    return;
   event.preventDefault();
   const neighbor =
     event.key === 'ArrowLeft' ? card.previousElementSibling : card.nextElementSibling;
-  neighbor?.querySelector('.open-card').focus({ preventScroll: true });
+  if (neighbor) neighbor.querySelector('.open-card').focus({ preventScroll: true });
+  else {
+    const i = selected.findIndex((entry) => entry.id === card.dataset.film);
+    const target = selected[i + (event.key === 'ArrowLeft' ? -1 : 1)];
+    if (!target) return;
+    cueFrame(target.id);
+    results
+      .querySelector('[data-film="' + CSS.escape(target.id) + '"] .open-card')
+      ?.focus({ preventScroll: true });
+  }
 });
 document.querySelector('.projector').addEventListener('keydown', (event) => {
   if (!['ArrowLeft', 'ArrowRight'].includes(event.key)) return;

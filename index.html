@@ -27,6 +27,7 @@
     <link rel="stylesheet" href="./css/exhibition.css" />
     <link rel="stylesheet" href="./css/dialogs.css" />
     <link rel="stylesheet" href="./css/vault.css" />
+    <link rel="stylesheet" href="./css/discovery.css" />
     <link rel="modulepreload" href="./js/motion.js" />
     <link rel="modulepreload" href="./js/views.js" />
     <script type="module" src="./js/app.js"></script>
@@ -66,6 +67,23 @@
       </symbol>
       <symbol id="trash" viewBox="0 0 24 24">
         <path d="M4 7h16m-11 0V4h6v3M6 7l1 13h10l1-13M10 10v7m4-7v7" />
+      </symbol>
+      <symbol id="layout-screen" viewBox="0 0 24 24">
+        <rect x="2" y="4" width="20" height="13" rx="2" />
+        <path d="M8 21h8m-4-4v4" />
+      </symbol>
+      <symbol id="layout-grid" viewBox="0 0 24 24">
+        <rect x="3" y="3" width="7" height="8" rx="1" />
+        <rect x="14" y="3" width="7" height="8" rx="1" />
+        <path d="M3 15h7v6H3zm11 0h7v6h-7z" />
+      </symbol>
+      <symbol id="layout-list" viewBox="0 0 24 24">
+        <path d="M8 5h13M8 12h13M8 19h13M3 5h1m-1 7h1m-1 7h1" />
+      </symbol>
+      <symbol id="filter-sliders" viewBox="0 0 24 24">
+        <path d="M3 7h6m5 0h7M3 17h11m5 0h2" />
+        <circle cx="11.5" cy="7" r="2.5" />
+        <circle cx="16.5" cy="17" r="2.5" />
       </symbol>
       <symbol id="check" viewBox="0 0 24 24"><path d="m5 12 4.5 4.5L19 7" /></symbol>
     </svg>
@@ -207,6 +225,38 @@
               </button>
             </div>
           </div>
+          <div class="browse-views" role="group" aria-label="Collection layout">
+            <button
+              type="button"
+              data-layout="screening"
+              aria-label="Screening Room"
+              title="Screening Room"
+              aria-pressed="true"
+            >
+              <svg class="icon" aria-hidden="true"><use href="#layout-screen" /></svg
+              ><span>Screening Room</span>
+            </button>
+            <button
+              type="button"
+              data-layout="gallery"
+              aria-label="Gallery"
+              title="Gallery"
+              aria-pressed="false"
+            >
+              <svg class="icon" aria-hidden="true"><use href="#layout-grid" /></svg
+              ><span>Gallery</span>
+            </button>
+            <button
+              type="button"
+              data-layout="compact"
+              aria-label="Compact"
+              title="Compact"
+              aria-pressed="false"
+            >
+              <svg class="icon" aria-hidden="true"><use href="#layout-list" /></svg
+              ><span>Compact</span>
+            </button>
+          </div>
           <div class="toolbar pane glass-controls">
             <label class="search"
               ><svg class="icon"><use href="#search" /></svg
@@ -219,19 +269,43 @@
             /></label>
             <label class="sort"
               ><svg class="icon"><use href="#sort" /></svg
-              ><select id="order" aria-label="Sort titles">
-                <option value="recent">Recently added</option>
-                <option value="highest">Highest rating</option>
-                <option value="lowest">Lowest rating</option>
-                <option value="alpha">Alphabetical</option></select
+              ><select id="order" aria-label="Sort titles" aria-description="Automatic sorts by relevance during search and by date added otherwise."></select
               ><svg class="icon chevron"><use href="#down" /></svg
             ></label>
+            <button
+              id="filter-open"
+              type="button"
+              aria-haspopup="dialog"
+              aria-controls="discovery-filters"
+            >
+              <svg class="icon" aria-hidden="true"><use href="#filter-sliders" /></svg>Filters<span
+                id="filter-count"
+                hidden
+              ></span>
+            </button>
           </div>
+        </div>
+        <div id="discover-summary">
+          <p id="result-status" role="status" aria-live="polite"></p>
+          <div id="active-filters" role="group" aria-label="Active filters" hidden></div>
+          <nav id="browse-pages" aria-label="Result pages" hidden>
+            <button type="button" data-page-step="-1" aria-label="Previous page">
+              <svg class="icon" aria-hidden="true"><use href="#next" /></svg>
+            </button>
+            <label
+              >Page
+              <select id="browse-page" aria-label="Result page"></select
+              ><span id="page-total"></span
+            ></label>
+            <button type="button" data-page-step="1" aria-label="Next page">
+              <svg class="icon" aria-hidden="true"><use href="#next" /></svg>
+            </button>
+          </nav>
         </div>
         <div class="gallery">
           <p class="notice" id="storage-note" role="status" hidden></p>
           <div id="results"></div>
-          <p id="result-status" class="sr-only" role="status"></p>
+
         </div>
       </section>
     </main>
@@ -258,6 +332,102 @@
       height="269"
       alt=""
     />
+    <dialog id="discovery-filters" class="pane glass-sheet" aria-labelledby="filters-heading">
+      <header class="sheet-head">
+        <h2 id="filters-heading">Filter collection</h2>
+        <button
+          type="button"
+          id="filter-close"
+          class="icon-button close-button"
+          aria-label="Close filters"
+        >
+          <svg class="icon" aria-hidden="true"><use href="#x" /></svg>
+        </button>
+      </header>
+      <form id="discovery-form">
+        <div class="filter-body">
+          <fieldset>
+            <legend>Quick sort</legend>
+            <div class="facet-options" id="quick-sorts">
+              <button type="button" data-preset="highest">Highest rated</button
+              ><button type="button" data-preset="recent">Recently added</button
+              ><button type="button" data-preset="release">Recent releases</button>
+            </div>
+          </fieldset>
+          <fieldset>
+            <legend>Genre <small>Match any</small></legend>
+            <div class="facet-options" id="facet-genres"></div>
+          </fieldset>
+          <fieldset>
+            <legend>Original language <small>Match any</small></legend>
+            <div class="facet-options" id="facet-languages"></div>
+          </fieldset>
+          <fieldset>
+            <legend>Release year</legend>
+            <div class="filter-fields">
+              <label
+                >From<input name="yearFrom" type="number" min="1" max="9999" placeholder="Any year"
+              /></label>
+              <label
+                >Through<input
+                  name="yearTo"
+                  type="number"
+                  min="1"
+                  max="9999"
+                  placeholder="Any year"
+              /></label>
+              <label
+                >Decade<select id="filter-decade">
+                  <option value="">Choose decade</option>
+                </select></label
+              >
+            </div>
+          </fieldset>
+          <fieldset>
+            <legend>Personal rating</legend>
+            <div class="filter-fields">
+              <label
+                >Minimum<input
+                  name="ratingFrom"
+                  type="number"
+                  min="1"
+                  max="10"
+                  step="0.5"
+                  placeholder="1"
+              /></label>
+              <label
+                >Maximum<input
+                  name="ratingTo"
+                  type="number"
+                  min="1"
+                  max="10"
+                  step="0.5"
+                  placeholder="10"
+              /></label>
+            </div>
+          </fieldset>
+          <fieldset>
+            <legend>Date added <small>UTC</small></legend>
+            <div class="filter-fields">
+              <label
+                >From<input name="addedFrom" type="date" min="0001-01-01" max="9999-12-31" /></label
+              ><label
+                >Through<input name="addedTo" type="date" min="0001-01-01" max="9999-12-31"
+              /></label>
+            </div>
+          </fieldset>
+          <div class="filter-fields">
+            <label>Entry source<select name="source"></select></label
+            ><label>Metadata<select name="missing"></select></label>
+          </div>
+        </div>
+        <footer class="filter-foot">
+          <button type="button" id="reset-draft" class="text-button">Reset filters</button
+          ><span id="filter-preview" role="status"></span
+          ><button type="submit" class="button primary">Apply</button>
+        </footer>
+      </form>
+    </dialog>
     <dialog id="editor" aria-labelledby="editor-heading">
       <form id="movie-form" novalidate>
         <div class="editor-body">

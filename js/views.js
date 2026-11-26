@@ -20,7 +20,7 @@ function el(tag, cls, text) {
   if (text) node.textContent = text;
   return node;
 }
-export function artwork(path, size, type, title) {
+export function artwork(path, size, type, title, loading) {
   const frame = el('span', 'artwork');
   if (title) {
     const initials = title
@@ -40,7 +40,7 @@ export function artwork(path, size, type, title) {
   if (src) {
     const img = new Image();
     img.alt = '';
-    img.loading = size === 'w342' ? 'eager' : 'lazy';
+    img.loading = loading ?? (size === 'w342' ? 'eager' : 'lazy');
     img.decoding = 'async';
     img.addEventListener('error', () => img.remove(), { once: true });
     const higherDensity = { w92: 'w185', w185: 'w342', w342: 'w780', w780: 'w1280' }[size];
@@ -53,7 +53,7 @@ export function artwork(path, size, type, title) {
   }
   return frame;
 }
-function actionButton(action, title) {
+export function actionButton(action, title) {
   const button = el('button', 'icon-button');
   button.dataset.action = action;
   button.setAttribute('aria-label', (action === 'edit' ? 'Edit ' : 'Delete ') + title);
@@ -119,7 +119,7 @@ export function emptyState(searching, type) {
       ? 'Your first screening.'
       : 'Your first series.';
   const copy = searching
-    ? 'Try a different title or clear your search.'
+    ? 'Try another search or clear your filters.'
     : movie
       ? 'Give a movie a rating to start your collection.'
       : 'Save a series you’ve watched and give it a rating.';
@@ -127,7 +127,7 @@ export function emptyState(searching, type) {
   const button = el('button', 'button ' + (searching ? 'secondary' : 'empty-button'));
   if (searching) {
     button.dataset.clear = '';
-    button.textContent = 'Clear search';
+    button.textContent = 'Clear search and filters';
   } else {
     button.dataset.add = '';
     button.append(icon('plus'), movie ? 'Add a movie' : 'Add a series');
