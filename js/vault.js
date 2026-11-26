@@ -1,3 +1,4 @@
+import { configured, owner, session } from './cloud/scope.js';
 import { snapshot, STORAGE_KEY, LEGACY_KEY, withLock } from './collection.js';
 import { MAX_BYTES } from './validation.js';
 import { csvText, fileName, readBackup } from './backup.js';
@@ -40,7 +41,9 @@ function overview() {
   byId('movies').textContent = items.filter((item) => item.mediaType === 'movie').length;
   byId('series').textContent = items.filter((item) => item.mediaType === 'tv').length;
   byId('local').textContent = notice
-    ? 'Session only'
+    ? owner
+      ? 'Storage protected'
+      : 'Session only'
     : items.length
       ? 'Saved locally'
       : 'Empty collection';
@@ -50,6 +53,11 @@ function overview() {
   byId('last').textContent = status.exportedAt
     ? date.format(new Date(status.exportedAt))
     : 'None recorded';
+  byId('cloud-note').textContent = owner
+    ? 'Account archive · ' + (session()?.email || 'signed in')
+    : configured
+      ? 'Guest archive · local only.'
+      : 'Cloud sync is not configured.';
   byId('reminder').hidden = !reminderDue(status);
   try {
     history = checkpoints();
@@ -111,8 +119,36 @@ function openTab(name) {
   message();
   overview();
   if (tab === 'recovery') drawHistory();
+  if (tab === 'cloud') openCloud();
 }
-tabs.forEach((button) => button.addEventListener('click', () => openTab(button.dataset.vaultTab)));
+async function openCloud() {
+  const area = byId('cloud');
+  if (!configured) {
+    area.replaceChildren(
+      node('h3', 'Cloud sync'),
+      node(
+        'p',
+        'This journal is local to this browser. To enable private account sync, connect a Supabase project using the setup guide.'
+      )
+    );
+    const guide = node('a', 'Cloud setup guide');
+    guide.href = 'https://github.com/Lord80/aftercredits/blob/main/docs/phase-3b/README.md';
+    guide.className = 'text-button';
+    area.append(guide);
+    return;
+  }
+  try {
+    const ui = await import('./cloud/panel.js');
+    if (tab === 'cloud' && dialog.open) ui.openCloud(area, download);
+  } catch {
+    message('Account tools could not open. Your local collection is available.', true);
+  }
+}
+tabs.forEach((button) =>
+  button.addEventListener('click', () => {
+    if (tab !== button.dataset.vaultTab) openTab(button.dataset.vaultTab);
+  })
+);
 
 function download(text, kind, at, ext) {
   const blob = new Blob([text], {
@@ -165,7 +201,7 @@ byId('csv').addEventListener('click', () => {
 byId('dismiss').addEventListener('click', async () => {
   try {
     await withLock(dismissReminder);
-    tabs.find(button => button.dataset.vaultTab === tab).focus();
+    tabs.find((button) => button.dataset.vaultTab === tab).focus();
     overview();
     message('Reminder dismissed.');
   } catch {
@@ -413,24 +449,30 @@ dialog.addEventListener('click', (event) => {
   )
     close();
 });
-window.addEventListener('storage', (event) => {
+function refreshVault(key) {
   if (!dialog.open) return;
-  if ([null, STORAGE_KEY, LEGACY_KEY].includes(event.key) && preview) {
+  if (
+    [null, STORAGE_KEY, LEGACY_KEY].includes(key) &&
+    preview &&
+    preview.base !== JSON.stringify(snapshot().items)
+  ) {
     const report = preview.report;
     startReview(report, source);
     message('The local collection changed. Review this updated comparison before confirming.');
   }
-  if ([null, STORAGE_KEY, LEGACY_KEY, HISTORY_KEY, STATUS_KEY].includes(event.key)) {
+  if ([null, STORAGE_KEY, LEGACY_KEY, HISTORY_KEY, STATUS_KEY].includes(key)) {
     overview();
     if (tab === 'recovery') drawHistory();
   }
-});
+}
+window.addEventListener('storage', (event) => refreshVault(event.key));
+window.addEventListener('cloud-collection', () => refreshVault(STORAGE_KEY));
 
-export function openVault(refresh, syncControl) {
+export function openVault(refresh, syncControl, initialTab = 'export') {
   if (dialog.open || closing) return;
   refreshRoom = refresh;
   updateControl = syncControl;
-  openTab('export');
+  openTab(initialTab);
   showDialog(dialog, byId('open'));
   dialog.scrollTop = 0;
   byId('close').focus({ preventScroll: true });

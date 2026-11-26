@@ -1,5 +1,6 @@
 import {
   cleanTitle,
+  equal,
   titleKey,
   validRating,
   validType,
@@ -10,7 +11,9 @@ import {
 import { noteChanges } from './vault-status.js';
 export { cleanTitle, titleKey, validRating, validType } from './validation.js';
 
-export const STORAGE_KEY = 'aftercredits.collection.v2';
+import { owner, accountKey, assertScope } from './cloud/scope.js';
+let accountStore;
+export const STORAGE_KEY = owner ? accountKey(owner) : 'aftercredits.collection.v2';
 export const LEGACY_KEY = 'aftercredits.collection.v1';
 const temporary = 'Browser storage is unavailable. Changes will last for this tab session.';
 let memoryOnly = false;
@@ -18,6 +21,16 @@ let items = [];
 let notice = '';
 
 function read() {
+  if (owner) {
+    try {
+      items = accountStore.accountEntries();
+      notice = '';
+    } catch {
+      items = [];
+      notice = 'The account cache could not be read. Its stored data is protected.';
+    }
+    return;
+  }
   if (memoryOnly) return;
   let raw, legacy;
   try {
@@ -55,7 +68,18 @@ function read() {
   }
 }
 
+export function persistEntries(next) {
+  assertScope();
+  if (owner) accountStore.saveAccountEntries(next);
+  else localStorage.setItem(STORAGE_KEY, JSON.stringify({ version: 2, entries: next }));
+}
 function write(next, changes = 0) {
+  if (owner) {
+    persistEntries(next);
+    items = next;
+    if (changes) noteChanges(changes);
+    return;
+  }
   items = next;
   if (!memoryOnly) {
     try {
@@ -69,9 +93,21 @@ function write(next, changes = 0) {
 }
 
 export const withLock = (task, options = {}) =>
-  navigator.locks ? navigator.locks.request(STORAGE_KEY, options, async () => task()) : task();
+  navigator.locks
+    ? navigator.locks.request(STORAGE_KEY, options, async () => {
+        assertScope();
+        return task();
+      })
+    : owner
+      ? Promise.reject(
+          new Error(
+            'Safe account writes require Web Locks. Open the HTTPS site in a current browser.'
+          )
+        )
+      : task();
 
 export async function initialize() {
+  if (owner) accountStore = await import('./cloud/local.js');
   // Reading v2 is atomic. Only the legacy copy needs to coordinate with writers.
   if (read() && !memoryOnly) {
     await withLock(() => {
@@ -86,11 +122,15 @@ export function snapshot() {
   return { items, notice };
 }
 
-export function changeMovie({ action, id, title, rating, mediaType, match }) {
+export function changeMovie({ action, id, title, rating, mediaType, match, originalEntry }) {
   return withLock(() => {
     read();
     const existing = items.find((entry) => entry.id === id);
     if (id && !existing) throw new Error('This entry has already been removed.');
+    if (owner && existing && originalEntry && !equal(existing, originalEntry))
+      throw new Error(
+        'This title changed while it was open. Reopen it to review the latest version.'
+      );
     if (action === 'delete') {
       write(
         items.filter((entry) => entry.id !== id),

@@ -450,13 +450,14 @@
               <div><dt>Last JSON export</dt><dd id="vault-last"></dd></div>
               <div><dt>Recovery history</dt><dd id="vault-history-count"></dd></div>
             </dl>
-            <p>Clearing site data removes this journal and its recovery history. Cloud sync is unavailable.</p>
+            <p>Clearing site data removes this device’s copy and its recovery history. <span id="vault-cloud-note">Cloud sync is optional.</span></p>
           </aside>
           <div class="vault-work">
             <div class="vault-nav" role="group" aria-label="Data Vault tools">
               <button type="button" data-vault-tab="export" aria-controls="vault-export">Export</button>
               <button type="button" data-vault-tab="import" aria-controls="vault-import">Import</button>
               <button type="button" data-vault-tab="recovery" aria-controls="vault-recovery">Recovery</button>
+              <button type="button" data-vault-tab="cloud" aria-controls="vault-cloud">Account</button>
             </div>
             <section id="vault-export">
               <h3>Take your collection with you.</h3>
@@ -476,6 +477,7 @@
               <p>Up to three snapshots are kept in this browser before imports and recoveries. Download a JSON backup to keep a copy outside this browser.</p>
               <div id="vault-history"></div>
             </section>
+            <section id="vault-cloud" hidden aria-label="Account and cloud sync"></section>
             <section id="vault-preview" class="vault-rule" aria-labelledby="vault-preview-title" hidden>
               <h3 id="vault-preview-title" tabindex="-1">Import preview</h3>
               <p id="vault-source"></p><dl class="vault-summary" id="vault-summary"></dl>
