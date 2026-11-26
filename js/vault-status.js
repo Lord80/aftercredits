@@ -1,4 +1,5 @@
-export const STATUS_KEY = 'aftercredits.vault.status.v1';
+import { keyFor } from './cloud/scope.js';
+export const STATUS_KEY = keyFor('aftercredits.vault.status.v1');
 const fresh = () => ({ exportedAt: null, changes: 0, dismissedAt: 0 });
 export function backupStatus() {
   try {

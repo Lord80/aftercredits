@@ -78,6 +78,10 @@ def check_portability(browser):
     enter(page)
     expect(page.locator("#vault-movies")).to_have_text("2")
     expect(page.locator("#vault-series")).to_have_text("1")
+    tab(page, "cloud")
+    expect(page.locator("#vault-cloud")).to_contain_text("local to this browser")
+    assert page.evaluate("performance.getEntriesByType('resource').every(r=>!r.name.endsWith('/cloud/auth.js') && !r.name.includes('.supabase.co/'))")
+    tab(page, "export")
     name, backup = download(page, "#vault-json")
     assert name.startswith("aftercredits-backup-")
     assert json.loads(backup)["collection"]["entries"] == initial

@@ -1,10 +1,10 @@
 # AFTERCREDITS
 
-A personal watch journal for movies and TV series. The static frontend runs on GitHub Pages. A small Cloudflare Worker handles optional TMDB catalog requests. Collection data stays in the browser.
+A personal watch journal for movies and TV series. The static frontend runs on GitHub Pages. A small Cloudflare Worker handles optional TMDB catalog requests. Guest collections stay in the browser. Owners can enable private cross-device archives with Supabase.
 
 The journal opens onto a screening room overlooking the cinema street. Browse mounted posters, jump to a title in the filmstrip, or open its full-window projection. Swipe, use the arrow keys or choose a print to bring it forward. **Ambient motion** in the footer pauses the moving weather. [Final visual and performance review](docs/phase-2e/) · [Motion design](docs/phase-2d/) · [Screening room layout](docs/screening-room/) · [Earlier spatial design](docs/phase-2c-1/) · [Splice identity](docs/phase-2b/) · [Cinema street](docs/phase-2a/)
 
-Open **Data Vault** in the footer to download a full JSON backup, export CSV, compare an incoming file or recover a previous collection. A restore requires a separate download of the current collection and explicit confirmation. Keep the resulting backup file outside this browser. [Vault guide, screenshots and file specification](docs/phase-3a/) · [Proposed cloud schema](docs/phase-3a/phase-3b.md)
+Open **Data Vault** in the footer to download a full JSON backup, export CSV, compare an incoming file or recover a previous collection. A restore requires a separate download of the current collection and explicit confirmation. Keep the resulting backup file outside this browser. [Vault guide, screenshots and file specification](docs/phase-3a/) · [Private cloud setup, sync and screenshots](docs/phase-3b/)
 
 ## What works
 
@@ -12,6 +12,7 @@ Open **Data Vault** in the footer to download a full JSON backup, export CSV, co
 | --- | --- |
 | Separate Movies and TV Series collections, manual entry, half-point ratings, editing, confirmed deletion, search, four sort orders, totals and average rating | Available on first visit |
 | JSON backup, CSV export, previewed merge, full restore and bounded recovery history | Local to this browser. Applying an import requires Web Locks and sufficient storage. |
+| Private accounts, offline editing, cross-device sync and conflict review | Optional. Configure a Supabase project, then open **Data Vault → Account**. [Browser deployment guide](docs/phase-3b/) |
 | Migration from the original film journal, persistent personal ratings, cached title details, cross-tab updates | Available without an API connection |
 | Live catalog search, exact-title selection, official posters, and richer detail views | Uses the public Worker configured in `js/config.js`. New deployments can follow the setup below. |
 | Filtering by genre, year, language, and rating | Planned. The data model already retains the relevant fields. |
@@ -38,7 +39,7 @@ The Worker accepts GET requests to `/search?type=movie&q=…` and `/details?type
 
 ## Data, migration, and offline behavior
 
-The current LocalStorage key is `aftercredits.collection.v2`. Its envelope contains `version: 2` and an `entries` array.
+The guest LocalStorage key is `aftercredits.collection.v2`. Its envelope contains `version: 2` and an `entries` array.
 
 | Entry field | Purpose |
 | --- | --- |
@@ -51,10 +52,11 @@ On first use with an existing v1 archive, the app writes a v2 copy. Original IDs
 
 The combination of media type and TMDB ID identifies a catalog entry. Remakes can share a title, and a film and a series can share a numeric ID. Manual entries use normalized, case-insensitive title comparison within their section. Editing the personal display title preserves the original metadata snapshot and added date.
 
-Browsing, searching, editing, rating, and deleting saved entries work when TMDB is offline. If the details request fails after a successful catalog search, you can save the returned search record. Gallery cards display a typographic cover made from the title’s initials when a poster is missing or unreachable. The app stores artwork paths, so viewing uncached images requires a connection. Browser profiles and origins have separate journals. Clearing site data removes the archive. Blocked or full storage switches the current tab to memory with a visible notice.
+Browsing, searching, editing, rating, and deleting saved entries work when TMDB is offline. If the details request fails after a successful catalog search, you can save the returned search record. Gallery cards display a typographic cover made from the title’s initials when a poster is missing or unreachable. The app stores artwork paths, so viewing uncached images requires a connection. Browser profiles and origins have separate journals. Clearing site data removes the guest archive and this device’s account caches. Guest mode can fall back to tab memory with a visible notice. Connected accounts keep separate durable caches and report an unsaved change if storage is full.
 
 ## Implementation and verification
 
+- `js/cloud/` handles optional auth, account-scoped storage, three-way comparison and synchronization. The SQL migration and security boundaries are documented in the [private cloud guide](docs/phase-3b/).
 - `js/collection.js` owns versioning, migration, validation, identity, and sorting.
 - `js/catalog.js` calls the proxy and builds allowlisted image URLs. `js/picker.js` manages debouncing, cancellation, selection, and partial detail recovery.
 - `js/stage.js` positions the three posters and handles stage navigation. `js/filmstrip.js` manages the archive’s native horizontal scrolling.

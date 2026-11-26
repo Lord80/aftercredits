@@ -1,3 +1,4 @@
+import { owner, configured, reloadScope } from './cloud/scope.js';
 import {
   changeMovie,
   selectMovies,
@@ -47,6 +48,7 @@ const formError = byId('form-error');
 let movies = [];
 let section = 'movie';
 let subject = null;
+let originalEntry;
 let opener = null;
 let busy = false;
 let renderFrame;
@@ -63,12 +65,15 @@ function updateVaultControl() {
   control.toggleAttribute('data-due', due);
   control.setAttribute('aria-label', due ? 'Data Vault, backup reminder' : 'Data Vault');
 }
-byId('vault-open').addEventListener('click', async () => {
+async function openDataVault(tab) {
   try {
     const { openVault } = await import('./vault.js');
-    openVault(() => refresh(), updateVaultControl);
-  } catch { feedback('The Data Vault could not open. Try again.'); }
-});
+    openVault(() => refresh(), updateVaultControl, tab);
+  } catch {
+    feedback('The Data Vault could not open. Try again.');
+  }
+}
+byId('vault-open').addEventListener('click', () => openDataVault('export'));
 function refresh(state = snapshot()) {
   updateVaultControl();
   // A storage read parses new objects. Keep equal snapshots referentially stable for the strip and stage.
@@ -143,7 +148,8 @@ function render() {
     // Older engines can batch a large reorder when focus is outside the strip.
     const first = list.firstElementChild;
     if (
-      !list.moveBefore && cards.length > 24 &&
+      !list.moveBefore &&
+      cards.length > 24 &&
       first &&
       first !== cards[0] &&
       !list.contains(document.activeElement)
@@ -213,6 +219,7 @@ window.visualViewport?.addEventListener('scroll', resizeEditor);
 
 function openPanel(action, film, button) {
   subject = film?.id ?? null;
+  originalEntry = film;
   opener = button;
   if (action === 'details') {
     const dialog = byId('detail-dialog');
@@ -298,6 +305,7 @@ async function submit(event) {
     const savedId = await changeMovie({
       action,
       id: subject,
+      originalEntry,
       ...picked,
       rating: rating.valueAsNumber,
     });
@@ -416,3 +424,25 @@ document.querySelector('.projector').addEventListener('keydown', (event) => {
 setupAtmosphere();
 refresh(await initialize());
 entrance();
+
+if (configured) {
+  window.addEventListener('cloud-session-ended', () => {
+    try {
+      sessionStorage.setItem('aftercredits.open-account', '1');
+      sessionStorage.setItem('aftercredits.session-ended', '1');
+    } catch {}
+    reloadScope();
+  });
+  window.addEventListener('cloud-collection', () => refresh());
+  if (owner) import('./cloud/local.js').then((module) => module.prepareOfflineShell());
+  if (owner)
+    import('./cloud/sync.js')
+      .then((module) => module.startSync())
+      .catch(() => feedback('Cloud sync is unavailable. Your archive is kept locally.'));
+  try {
+    if (sessionStorage.getItem('aftercredits.open-account')) {
+      sessionStorage.removeItem('aftercredits.open-account');
+      openDataVault('cloud');
+    }
+  } catch {}
+}

@@ -1,10 +1,11 @@
-import { snapshot, STORAGE_KEY, withLock } from './collection.js';
+import { snapshot, persistEntries, withLock } from './collection.js';
 import { backupText, readBackup } from './backup.js';
 import { requireEntries } from './validation.js';
 import { mergedEntries, planImport } from './import-plan.js';
 import { backupStatus, noteChanges, recordExport } from './vault-status.js';
 
-export const HISTORY_KEY = 'aftercredits.vault.recovery.v1';
+import { keyFor } from './cloud/scope.js';
+export const HISTORY_KEY = keyFor('aftercredits.vault.recovery.v1');
 const historyLimit = 3;
 const recoveryDownloads = new WeakMap();
 const changed = 'The collection changed since this preview. Review the current collection again.';
@@ -56,7 +57,6 @@ function storeWithCheckpoint(items, next) {
     0,
     historyLimit
   );
-  const archive = JSON.stringify({ version: 2, entries: next });
   let wroteHistory = false;
   let writingArchive;
   while (copies.length) {
@@ -65,7 +65,7 @@ function storeWithCheckpoint(items, next) {
       localStorage.setItem(HISTORY_KEY, JSON.stringify({ version: 1, copies }));
       wroteHistory = true;
       writingArchive = true;
-      localStorage.setItem(STORAGE_KEY, archive);
+      persistEntries(next);
       return;
     } catch (error) {
       if (error.name === 'QuotaExceededError' && copies.length > 1) {
