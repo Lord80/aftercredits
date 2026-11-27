@@ -1,19 +1,7 @@
 import { accountKey, owner, requireSession, prefix } from './scope.js';
-import {
-  active,
-  acknowledge,
-  blank,
-  cacheAt,
-  overlay,
-  reconcile,
-  withEntries,
-  working,
-} from './cache.js';
+import { active, acknowledge, cacheAt, overlay, reconcile, withEntries } from './cache.js';
 import { rpc } from './auth.js';
 import { requireEntries } from '../validation.js';
-import { withLock, snapshot } from '../collection.js';
-import { planImport, mergedEntries } from '../import-plan.js';
-import { exportCurrent } from '../vault-store.js';
 
 const notify = () => window.dispatchEvent(new Event('cloud-state'));
 let phase = '',
@@ -68,58 +56,6 @@ async function pull(id, base, cursor) {
   const rows = overlay(base, changes);
   requireEntries(active(rows));
   return { rows, cursor: head };
-}
-const migrations = new WeakMap();
-export async function previewMigration(id) {
-  if (owner) throw new Error('This device already has an account archive.');
-  const guest = snapshot();
-  if (guest.notice) throw new Error('Export and recover the guest archive before connecting it.');
-  requireEntries(guest.items);
-  const remote = await pull(id, [], 0);
-  if (!remote) throw new Error('The cloud collection changed during review. Preview it again.');
-  const deleted = new Set(remote.rows.filter((r) => !r.entry).map((r) => r.id));
-  const plan = planImport(
-    active(remote.rows),
-    guest.items.filter((e) => !deleted.has(e.id))
-  );
-  const preview = {
-    id,
-    remote,
-    plan,
-    guest: JSON.stringify(guest.items),
-    deleted: guest.items.filter((e) => deleted.has(e.id)),
-  };
-  requireSession(id);
-  return preview;
-}
-export async function migrationBackup(p, generate) {
-  requireSession(p.id);
-  const result = await exportCurrent(generate, p.guest, true);
-  if (result.sessionOnly) throw new Error('Recover local storage before connecting.');
-  migrations.set(p, result.receipt);
-}
-export async function connect(p, merge, accepted) {
-  if (!migrations.has(p)) throw new Error('Download the guest recovery JSON first.');
-  const check = await rpc(p.id, 'ac_pull', {
-    after_revision: p.remote.cursor,
-    pinned_head: p.remote.cursor,
-  });
-  if (check.status !== 'ok') throw new Error('The cloud archive changed. Generate a new preview.');
-  // The guest lock pins the source; the account lock installs cache, cursor and pending edits together.
-  await withLock(() =>
-    lock(p.id, () => {
-      const guest = snapshot();
-      if (guest.notice || JSON.stringify(guest.items) !== p.guest)
-        throw new Error('The guest collection changed. Review it again.');
-      if (localStorage.getItem(accountKey(p.id)) !== null)
-        throw new Error('This account is already connected. Sign out and back in.');
-      const local = merge
-        ? mergedEntries(active(p.remote.rows), p.plan, accepted)
-        : active(p.remote.rows);
-      store(p.id, withEntries({ ...blank(), ...p.remote }, local), false);
-    })
-  );
-  return (await import('./auth.js')).activateSession(p.id);
 }
 export function syncStatus() {
   if (!owner) return { state: 'Local only', pending: 0, last: null };

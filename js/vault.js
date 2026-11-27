@@ -1,7 +1,8 @@
 import { configured, owner, session } from './cloud/scope.js';
 import { snapshot, STORAGE_KEY, LEGACY_KEY, withLock } from './collection.js';
 import { MAX_BYTES } from './validation.js';
-import { csvText, fileName, readBackup } from './backup.js';
+import { download } from './download.js';
+import { csvText, readBackup } from './backup.js';
 import {
   applyImport,
   checkpoints,
@@ -20,6 +21,7 @@ content.replaceWith(content.content);
 const tabs = [...dialog.querySelectorAll('[data-vault-tab]')];
 const date = new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' });
 let refreshRoom, updateControl, preview, recoveryReceipt, source, mode, tab, history;
+let guestReview, returnFocus;
 let operation,
   generation = 0,
   closing = false,
@@ -75,6 +77,7 @@ function cancelPreview() {
   operation?.abort();
   operation = null;
   preview = null;
+  guestReview = null;
   recoveryReceipt = null;
   accepted.clear();
   byId('file').value = '';
@@ -121,7 +124,7 @@ function openTab(name) {
   if (tab === 'recovery') drawHistory();
   if (tab === 'cloud') openCloud();
 }
-async function openCloud() {
+function openCloud() {
   const area = byId('cloud');
   if (!configured) {
     area.replaceChildren(
@@ -137,35 +140,20 @@ async function openCloud() {
     area.append(guide);
     return;
   }
-  try {
-    const ui = await import('./cloud/panel.js');
-    if (tab === 'cloud' && dialog.open) ui.openCloud(area, download);
-  } catch {
-    message('Account tools could not open. Your local collection is available.', true);
-  }
+  const link = node('button', owner ? 'Open account' : 'Sign in');
+  link.type = 'button';
+  link.className = 'button primary';
+  link.onclick = async () => {
+    await close();
+    document.getElementById('account-open').click();
+  };
+  area.replaceChildren(node('h3', 'Your account'), link);
 }
 tabs.forEach((button) =>
   button.addEventListener('click', () => {
     if (tab !== button.dataset.vaultTab) openTab(button.dataset.vaultTab);
   })
 );
-
-function download(text, kind, at, ext) {
-  const blob = new Blob([text], {
-    type: ext === 'csv' ? 'text/csv;charset=utf-8' : 'application/json;charset=utf-8',
-  });
-  const url = URL.createObjectURL(blob);
-  const link = node('a');
-  link.download = fileName(kind, at, ext);
-  link.href = url;
-  document.body.append(link);
-  try {
-    link.click();
-  } finally {
-    link.remove();
-    setTimeout(() => URL.revokeObjectURL(url), 30000);
-  }
-}
 
 byId('json').addEventListener('click', async () => {
   const ticket = generation;
@@ -222,10 +210,12 @@ function compareRow(row) {
     );
     return box;
   }
+  const local = guestReview ? 'Account' : 'Local',
+    incoming = guestReview ? 'Guest' : 'File';
   const describe = (e) => e.title + ' · ' + e.rating + '/10 · added ' + e.added;
   box.append(
-    node('p', 'Local · ' + describe(row.current)),
-    node('p', 'File · ' + describe(row.entry))
+    node('p', local + ' · ' + describe(row.current)),
+    node('p', incoming + ' · ' + describe(row.entry))
   );
   const detail = node('details');
   detail.append(node('summary', 'Compare changed fields (' + row.differences.length + ')'));
@@ -236,9 +226,12 @@ function compareRow(row) {
         node('strong', k),
         node(
           'pre',
-          'Local · ' +
+          local +
+            ' · ' +
             (JSON.stringify(row.current[k], null, 2) ?? 'Missing') +
-            '\nFile · ' +
+            '\n' +
+            incoming +
+            ' · ' +
             (JSON.stringify(row.entry[k], null, 2) ?? 'Missing')
         )
       );
@@ -249,7 +242,10 @@ function compareRow(row) {
   choice.type = 'checkbox';
   choice.checked = accepted.has(row.entry.id);
   const label = node('label');
-  label.append(choice, 'Use the file’s version of ' + row.entry.title);
+  label.append(
+    choice,
+    'Use the ' + (guestReview ? 'guest' : 'file’s') + ' version of ' + row.entry.title
+  );
   choice.addEventListener('change', () => {
     if (choice.checked) accepted.add(row.entry.id);
     else accepted.delete(row.entry.id);
@@ -289,15 +285,20 @@ function enabled() {
       ? recoveryReceipt === null || !byId('consent').checked
       : !preview.plan.added && !accepted.size);
   byId('apply').className = 'button ' + (restore ? 'danger' : 'primary');
-  byId('apply').textContent = restore ? 'Confirm replacement' : 'Confirm merge';
+  byId('apply').textContent = restore
+    ? 'Confirm replacement'
+    : guestReview
+      ? 'Import guest titles'
+      : 'Confirm merge';
 }
 function setMode(next) {
   mode = next;
   recoveryReceipt = null;
   byId('consent').checked = false;
   dialog.querySelector('input[name="vault-mode"][value="' + mode + '"]').checked = true;
-  byId('mode-note').textContent =
-    mode === 'merge'
+  byId('mode-note').textContent = guestReview
+    ? 'Your account keeps its ratings and dates unless you select a guest version. A recovery snapshot is saved before import.'
+    : mode === 'merge'
       ? 'New titles will be added. Local ratings, dates and metadata are kept unless you choose a file version.'
       : 'The file’s IDs, order, dates and ratings will become your collection.';
   byId('protect').hidden = mode !== 'restore';
@@ -311,14 +312,19 @@ for (const radio of dialog.querySelectorAll('[name="vault-mode"]')) {
 }
 byId('consent').addEventListener('change', enabled);
 
-function startReview(report, name) {
+function startReview(report, name, guest = null) {
   cancelPreview();
+  guestReview = guest;
   message();
   source = name;
   preview = review(report);
   const { plan, notice } = preview;
   byId('preview').hidden = false;
-  byId('preview-title').textContent = tab === 'recovery' ? 'Recovery preview' : 'Import preview';
+  byId('preview-title').textContent = guestReview
+    ? 'Review guest titles'
+    : tab === 'recovery'
+      ? 'Recovery preview'
+      : 'Import preview';
   byId('source').textContent = name;
   const summary = byId('summary');
   summary.replaceChildren();
@@ -342,7 +348,7 @@ function startReview(report, name) {
   byId('errors').replaceChildren(...errors.map((err) => node('p', err)));
   byId('errors').hidden = !errors.length;
   byId('options').hidden = !!errors.length;
-  dialog.querySelector('.vault-modes').hidden = tab === 'recovery';
+  dialog.querySelector('.vault-modes').hidden = tab === 'recovery' || Boolean(guestReview);
   setMode(tab === 'recovery' ? 'restore' : 'merge');
   byId('preview-title').focus();
 }
@@ -393,13 +399,9 @@ byId('apply').addEventListener('click', async () => {
   byId('apply').disabled = true;
   byId('options').inert = true;
   try {
-    const changed = await applyImport(
-      preview,
-      mode,
-      new Set(accepted),
-      recoveryReceipt,
-      operation.signal
-    );
+    const changed = guestReview
+      ? await guestReview.apply(preview, new Set(accepted), operation.signal)
+      : await applyImport(preview, mode, new Set(accepted), recoveryReceipt, operation.signal);
     if (ticket !== generation) return;
     openTab(tab);
     refreshRoom();
@@ -427,11 +429,11 @@ async function close() {
   if (closing) return;
   closing = true;
   cancelPreview();
-  await hideDialog(dialog, byId('open'));
+  await hideDialog(dialog, returnFocus);
   history = null;
   byId('history').replaceChildren();
   closing = false;
-  byId('open').focus({ preventScroll: true });
+  returnFocus.focus({ preventScroll: true });
 }
 byId('close').onclick = close;
 dialog.addEventListener('cancel', (e) => {
@@ -456,6 +458,11 @@ function refreshVault(key) {
     preview &&
     preview.base !== JSON.stringify(snapshot().items)
   ) {
+    if (guestReview) {
+      cancelPreview();
+      message('Your account changed. Review the guest titles again from Account.');
+      return;
+    }
     const report = preview.report;
     startReview(report, source);
     message('The local collection changed. Review this updated comparison before confirming.');
@@ -468,12 +475,26 @@ function refreshVault(key) {
 window.addEventListener('storage', (event) => refreshVault(event.key));
 window.addEventListener('cloud-collection', () => refreshVault(STORAGE_KEY));
 
-export function openVault(refresh, syncControl, initialTab = 'export') {
+export function openVault(
+  refresh,
+  syncControl,
+  initialTab = 'export',
+  trigger = byId('open'),
+  guest = null
+) {
   if (dialog.open || closing) return;
   refreshRoom = refresh;
   updateControl = syncControl;
+  returnFocus = trigger;
   openTab(initialTab);
-  showDialog(dialog, byId('open'));
+  showDialog(dialog, trigger);
   dialog.scrollTop = 0;
   byId('close').focus({ preventScroll: true });
+  if (guest)
+    startReview(
+      guest.report,
+      'Guest journal on this device' +
+        (guest.skipped ? ' · ' + guest.skipped + ' previously deleted titles excluded' : ''),
+      guest
+    );
 }

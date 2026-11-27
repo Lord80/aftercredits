@@ -69,7 +69,7 @@ def wait(check, name):
 
 
 @contextmanager
-def stack():
+def stack(registration=False):
     network = "ac-test-" + secrets.token_hex(5)
     containers = []
     docker("network", "create", network)
@@ -120,6 +120,40 @@ def stack():
             alter role supabase_auth_admin set search_path=auth,public;
             create extension if not exists pgcrypto; grant usage on schema public to supabase_auth_admin;""")
         smtp = start("mail", "axllent/mailpit:v1.21.8", {}, 8025)
+        # Serve the actual operator templates inside the disposable network.
+        template_server = network + "-templates"
+        docker(
+            "create",
+            "--name",
+            template_server,
+            "--network",
+            network,
+            "--network-alias",
+            "templates",
+            "busybox:1.37",
+            "httpd",
+            "-f",
+            "-p",
+            "8011",
+            "-h",
+            "/www",
+        )
+        containers.append(template_server)
+        docker("cp", str(ROOT / "docs/phase-4a-1/email"), template_server + ":/www")
+        docker("start", template_server)
+        docker("exec", template_server, "chmod", "755", "/www")
+        docker(
+            "exec", template_server, "chmod", "644", "/www/confirmation.html", "/www/recovery.html"
+        )
+        assert "AFTERCREDITS" in docker(
+            "exec",
+            template_server,
+            "wget",
+            "-Y",
+            "off",
+            "-qO-",
+            "http://templates:8011/confirmation.html",
+        )
         auth = start(
             "auth",
             "supabase/gotrue:v2.177.0",
@@ -134,7 +168,13 @@ def stack():
                 "GOTRUE_JWT_AUD": "authenticated",
                 "GOTRUE_JWT_DEFAULT_GROUP_NAME": "authenticated",
                 "GOTRUE_JWT_ADMIN_ROLES": "service_role",
-                "GOTRUE_DISABLE_SIGNUP": "true",
+                "GOTRUE_DISABLE_SIGNUP": "false" if registration else "true",
+                "GOTRUE_MAILER_AUTOCONFIRM": "false",
+                "NO_PROXY": "templates,pg,mail,127.0.0.1,localhost",
+                "no_proxy": "templates,pg,mail,127.0.0.1,localhost",
+                "GOTRUE_MAILER_TEMPLATES_CONFIRMATION": "http://templates:8011/confirmation.html",
+                "GOTRUE_MAILER_TEMPLATES_RECOVERY": "http://templates:8011/recovery.html",
+                "GOTRUE_SMTP_MAX_FREQUENCY": "1s",
                 "GOTRUE_EXTERNAL_EMAIL_ENABLED": "true",
                 "GOTRUE_SMTP_HOST": "mail",
                 "GOTRUE_SMTP_PORT": "1025",

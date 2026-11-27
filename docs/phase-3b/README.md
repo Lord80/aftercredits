@@ -1,5 +1,7 @@
 # Private cloud archives
 
+Phase 3B introduced the storage and synchronization architecture described below. Phase 4A.1 moved sign-in into the main interface and made guest import optional after sign-in. Use the current guide for account onboarding, email and rollout settings. [Current account guide](../phase-4a-1/)
+
 AFTERCREDITS opens the guest journal immediately. Connecting a private Supabase account adds a separate archive that can travel between devices. The Account panel lives in **Data Vault** in the screening room footer. The repository ships with cloud access switched off.
 
 ## Deploy from a browser

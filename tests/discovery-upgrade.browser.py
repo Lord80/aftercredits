@@ -1,8 +1,9 @@
-"""Exercise a real 3B -> 4A service-worker lifecycle on one disposable origin.
-Pass a checkout of the configured Phase 3B release as the first argument.
+"""Exercise a previous release -> current service-worker upgrade on one disposable origin.
+Pass a checkout of the configured Phase 3B or 4A release as the first argument.
 """
 
 import json
+import re
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 import shutil
@@ -13,6 +14,9 @@ from playwright.sync_api import expect, sync_playwright
 BASE = Path(sys.argv[1]).resolve()
 ROOT = Path(__file__).resolve().parents[1]
 release = [BASE]
+prior_release = re.search(r"cachePrefix\s*\+\s*'([^']+)'", (BASE / "offline.js").read_text())[1]
+next_release = re.search(r"cachePrefix\s*\+\s*'([^']+)'", (ROOT / "offline.js").read_text())[1]
+assert prior_release != next_release
 
 
 class Fixture(SimpleHTTPRequestHandler):
@@ -95,7 +99,7 @@ with ThreadingHTTPServer(("127.0.0.1", 0), Fixture) as server, sync_playwright()
     page.reload()
     expect(page.locator("#headline")).to_have_text(entry["title"])
     page.wait_for_function("!!navigator.serviceWorker.controller")
-    assert page.evaluate("caches.keys().then(keys=>keys.some(k=>k.includes('3b.1:')))")
+    assert page.evaluate("v=>caches.keys().then(keys=>keys.some(k=>k.includes(v)))", prior_release)
     release[0] = ROOT
     page.evaluate("async()=>{const r=await navigator.serviceWorker.ready;await r.update()}")
     page.evaluate("""async()=>{const r=await navigator.serviceWorker.ready;
@@ -103,12 +107,12 @@ with ThreadingHTTPServer(("127.0.0.1", 0), Fixture) as server, sync_playwright()
         const w=r.installing;if(!w)throw Error('No pending upgrade');
         w.onstatechange=()=>{if(w.state==='installed')resolve();if(w.state==='redundant')reject(Error('Install failed'))}
       })}""")
-    assert not page.locator("#filter-open").count()
+    assert not page.locator("#account-open").count()
     observer = context.new_page()
     observer.goto(urlsplit_origin + "/upgrade-check.html")
     observer.evaluate(
         """async scope=>{const r=await navigator.serviceWorker.getRegistration(scope), w=r.waiting;
-      if(!w)throw Error('Expected the installed 4A worker to wait for the 3B client');
+      if(!w)throw Error('Expected the installed worker to wait for the previous client');
       window.newShell=new Promise((resolve,reject)=>{
         const timeout=setTimeout(()=>reject(Error('Upgrade never activated')),12000);
         w.onstatechange=()=>{if(w.state==='activated'){clearTimeout(timeout);resolve()}}
@@ -122,15 +126,19 @@ with ThreadingHTTPServer(("127.0.0.1", 0), Fixture) as server, sync_playwright()
     page.on("pageerror", lambda e: errors.append(str(e)))
     # The old page has released its controller. A fresh client opens the new version.
     page.goto(url)
-    page.wait_for_selector("#filter-open", timeout=5000)
+    page.wait_for_selector("#account-open", timeout=5000)
     assert page.evaluate(
-        "caches.keys().then(keys=>keys.some(k=>k.includes('4a.1:'))&&!keys.some(k=>k.includes('3b.1:')))"
+        "([old,next])=>caches.keys().then(keys=>keys.some(k=>k.includes(next))&&!keys.some(k=>k.includes(old)))",
+        [prior_release, next_release],
     )
     page.locator("[data-layout=gallery]").click()
     page.locator("#query").fill("archive")
     expect(page.locator(".library-card")).to_have_count(1)
     context.set_offline(True)
     page.reload()
+    page.locator("#account-open").click()
+    expect(page.locator(".cloud-state")).to_contain_text("Offline")
+    page.locator("#account-close").click()
     expect(page.locator("[data-layout=gallery]")).to_have_attribute("aria-pressed", "true")
     expect(page.locator("#query")).to_have_value("archive")
     page.locator("#filter-open").click()
