@@ -71,7 +71,8 @@ export function validateCache(c) {
 let previousKey, previousRaw, previousCache;
 export function cacheAt(key) {
   const raw = localStorage.getItem(key);
-  if (raw === null) throw new Error('The account cache is missing. Reconnect through Data Vault.');
+  if (raw === null)
+    throw new Error('The account cache is missing. Open Data & backup to check this device.');
   if (previousKey === key && previousRaw === raw) return previousCache;
   const c = validateCache(JSON.parse(raw));
   previousKey = key;
@@ -141,6 +142,47 @@ export function acknowledge(c, head) {
   return withEntries({ ...c, rows, cursor: head, flight: null }, working(c));
 }
 
+// Three versions of a single stable record can combine independent field edits.
+const collision = Symbol('conflicting edits');
+function mergeValue(base, local, remote) {
+  if (equal(local, base) || equal(local, remote)) return remote;
+  if (equal(remote, base)) return local;
+  if (![base, local, remote].every((v) => v && typeof v === 'object' && !Array.isArray(v)))
+    return collision;
+  const fields = [];
+  for (const key of new Set([
+    ...Object.keys(base),
+    ...Object.keys(local),
+    ...Object.keys(remote),
+  ])) {
+    const value = mergeValue(base[key], local[key], remote[key]);
+    if (value === collision) return collision;
+    if (value !== undefined) fields.push([key, value]);
+  }
+  return Object.fromEntries(fields);
+}
+function independentRecord(group) {
+  if (![group.base, group.local, group.remote].every((list) => list.length === 1)) return null;
+  const [base, local, remote] = [group.base[0], group.local[0], group.remote[0]];
+  if (
+    ![local, remote].every(
+      (entry) =>
+        entry.id === base.id && entry.mediaType === base.mediaType && entry.tmdbId === base.tmdbId
+    )
+  )
+    return null;
+  const result = mergeValue(base, local, remote);
+  // An identity assembled from unrelated edits can collide with a different group.
+  if (result === collision || ![identity(local), identity(remote)].includes(identity(result)))
+    return null;
+  try {
+    requireEntries([result]);
+    return result;
+  } catch {
+    return null;
+  }
+}
+
 // Compare connected sets of stable IDs and title identities. A rename or simultaneous
 // creation with two different local IDs must not produce two copies of the same film.
 export function reconcile(c, incoming, choices = new Map()) {
@@ -189,6 +231,11 @@ export function reconcile(c, incoming, choices = new Map()) {
     else if (same(g.remote, g.base) && !g.local.some((e) => deleted.has(e.id)))
       entries.push(...g.local);
     else {
+      const merged = independentRecord(g);
+      if (merged) {
+        entries.push(merged);
+        continue;
+      }
       conflicts.push(g);
       entries.push(...(choices.get(g.key) === 'cloud' ? g.remote : g.local));
     }

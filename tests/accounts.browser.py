@@ -82,8 +82,32 @@ def registration(browser, services, folder):
         signed_in(page)
         assert downloads == [] and fixture["entries"](page) == []
         synced(page)
-        expect(page.locator("#account-heading")).to_have_text("Sora")
+        expect(page.locator("#center-name")).to_have_text("Sora")
         expect(page.get_by_role("button", name=re.compile("Review guest titles"))).to_have_count(0)
+        # Account security uses the verified address. An unavailable mail provider keeps the form open.
+        page.locator("[data-center=security]").click()
+        button(page, "Reset password").click()
+        expect(page.get_by_label("Email", exact=True)).to_have_value(email)
+        expect(page.get_by_label("Email", exact=True)).not_to_be_editable()
+        ctx.route(
+            fixture["PROJECT"] + "/auth/v1/recover",
+            lambda route: route.fulfill(
+                status=503, json={}, headers={"Access-Control-Allow-Origin": "*"}
+            ),
+            times=1,
+        )
+        button(page, "Send recovery code").click()
+        expect(page.locator("#account-message")).to_contain_text("recovery email is unavailable")
+        expect(page.locator("#account-heading")).to_have_text("Forgot password?")
+        button(page, "Send recovery code").click()
+        expect(page.locator("#account-heading")).to_have_text("Set a new password")
+        recovery_code = inbox(services, "reset", "Reset your AFTERCREDITS password")
+        page.get_by_label("Recovery code").fill(recovery_code)
+        password = token_urlsafe(24)
+        page.get_by_label("New password", exact=True).fill(password)
+        button(page, "Set new password").click()
+        expect(page.locator("#account-heading")).to_have_text("Security")
+        expect(page.locator("#account-message")).to_have_text("Password updated.")
         page.locator("#account-close").click()
         expect(page.locator("#account-open")).to_be_focused()
         # Editing with the network stopped leaves a real private copy and a pending change.
@@ -100,7 +124,7 @@ def registration(browser, services, folder):
         expect(page.locator("#headline")).to_have_text("A private screening")
         assert fixture["entries"](page)[0]["rating"] == 9.5
         account(page)
-        expect(page.locator(".cloud-state")).to_have_text("Sync paused")
+        expect(page.locator(".cloud-state")).to_have_text("Needs attention")
         net["block_rpc"] = False
         fixture["force"](page)
         # An older release could leave a signed-in account waiting for a migration decision.
@@ -125,7 +149,8 @@ def registration(browser, services, folder):
         page.evaluate("([k,v])=>localStorage.setItem(k,v)", [fixture["GUEST"], guest_bytes])
         page.locator("#account-close").click()
         account(page)
-        button(page, "Review guest titles (2)").click()
+        fixture["vault"](page)
+        page.locator("#vault-guest").click()
         expect(page.locator("#vault-source")).to_contain_text("1 previously deleted")
         expect(page.locator("#vault-apply")).to_be_disabled()
         page.get_by_label("Use the guest version").check()
@@ -133,7 +158,7 @@ def registration(browser, services, folder):
         expect(page.locator("#vault-preview")).to_be_hidden()
         assert fixture["entries"](page) == [dict(private, rating=3.5)]
         assert read(page, fixture["GUEST"]) == guest_bytes
-        page.locator('[data-vault-tab="recovery"]').click()
+        page.locator("#vault-advanced summary").first.click()
         expect(page.locator("#vault-history button")).to_have_count(1)
         assert not downloads and not errors
         ctx.close()

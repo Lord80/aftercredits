@@ -73,6 +73,9 @@
         <rect x="2" y="4" width="20" height="13" rx="2" />
         <path d="M8 21h8m-4-4v4" />
       </symbol>
+      <symbol id="shield" viewBox="0 0 24 24"><path d="m12 3 8 3v5c0 5-4 8.5-8 10-4-1.5-8-5-8-10V6z"/><path d="m8.5 11.5 2.5 2.5 4.5-5"/></symbol>
+      <symbol id="backup" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="5" rx="1.4"/><path d="M5 10v10h14V10m-10 4h6"/></symbol>
+      <symbol id="leave" viewBox="0 0 24 24"><path d="M10 4H4v16h6m-1-8h12m-5-5 5 5-5 5"/></symbol>
       <symbol id="person" viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.5" /><path d="M4.8 20c.4-4.4 3-6.7 7.2-6.7s6.8 2.3 7.2 6.7" /></symbol>
       <symbol id="layout-grid" viewBox="0 0 24 24">
         <rect x="3" y="3" width="7" height="8" rx="1" />
@@ -321,8 +324,8 @@
         <img src="./assets/brand/aftercredits.svg" width="368" height="56" alt="" />
       </a>
       <button id="ambient-control" type="button" aria-pressed="true" hidden>Ambient motion</button>
-      <button id="vault-open" type="button" aria-haspopup="dialog" aria-controls="vault">
-        <svg class="icon" aria-hidden="true"><use href="#journal" /></svg> Data Vault
+      <button id="vault-open" type="button" aria-haspopup="dialog" aria-controls="account-dialog">
+        <svg class="icon" aria-hidden="true"><use href="#journal" /></svg> Data &amp; backup
       </button>
       <div class="attribution">
         <a href="https://www.themoviedb.org/" aria-label="The Movie Database"
@@ -610,78 +613,136 @@
         </div>
       </article>
     </dialog>
-    <dialog id="account-dialog" class="pane glass-sheet" aria-labelledby="account-heading">
-      <div class="account-cover">
-        <svg class="account-splice" aria-hidden="true" viewBox="0 0 54 56"><use href="./assets/brand/aftercredits.svg#upper-frame" /><use href="./assets/brand/aftercredits.svg#lower-frame" /></svg>
-        <button type="button" class="close-button" id="account-close" aria-label="Close account"><svg class="icon" aria-hidden="true"><use href="#x" /></svg></button>
-      </div>
-      <div class="account-content">
-        <h2 id="account-heading" tabindex="-1">Account</h2>
-        <div id="account-body"></div>
-        <p class="cloud-message" id="account-message" role="status" aria-live="polite" aria-atomic="true"></p>
-      </div>
-    </dialog>
-    <dialog id="vault" class="pane glass-sheet" aria-labelledby="vault-title">
-      <template id="vault-content">
-        <div class="vault-head">
-          <h2 id="vault-title">Data Vault</h2>
-          <button type="button" class="icon-button close-button" id="vault-close" aria-label="Close Data Vault">
-            <svg class="icon" aria-hidden="true"><use href="#x" /></svg>
+    <dialog id="account-dialog" aria-labelledby="center-title" class="pane glass-sheet">
+      <header class="center-bar">
+        <span class="center-mark" aria-hidden="true"
+          ><svg viewBox="0 0 54 56">
+            <use href="./assets/brand/aftercredits.svg#upper-frame" />
+            <use href="./assets/brand/aftercredits.svg#lower-frame" />
+            <use class="splice-light" href="./assets/brand/aftercredits.svg#light" /></svg
+        ></span>
+        <h2 id="center-title">Account Center</h2>
+        <button type="button" class="close-button" id="account-close" aria-label="Close Account Center">
+          <svg class="icon" aria-hidden="true"><use href="#x" /></svg>
+        </button>
+      </header>
+      <aside class="center-rail">
+        <nav id="center-nav" aria-label="Account sections">
+          <button type="button" data-center="overview">
+            <svg class="icon" aria-hidden="true"><use href="#layout-screen" /></svg
+            ><span>Overview</span>
           </button>
-        </div>
-        <div class="vault-layout">
-          <aside class="vault-ledger" aria-label="Collection overview">
-            <h3>Your archive</h3>
-            <dl class="vault-counts"><div><dt>Movies</dt><dd id="vault-movies">0</dd></div><div><dt>Series</dt><dd id="vault-series">0</dd></div></dl>
-            <dl class="vault-facts">
-              <div><dt>Browser storage</dt><dd id="vault-local"></dd></div>
-              <div><dt>Last JSON export</dt><dd id="vault-last"></dd></div>
-              <div><dt>Recovery history</dt><dd id="vault-history-count"></dd></div>
-            </dl>
-            <p>Clearing site data removes this device’s copy and its recovery history. <span id="vault-cloud-note">Cloud sync is optional.</span></p>
-          </aside>
-          <div class="vault-work">
-            <div class="vault-nav" role="group" aria-label="Data Vault tools">
-              <button type="button" data-vault-tab="export" aria-controls="vault-export">Export</button>
-              <button type="button" data-vault-tab="import" aria-controls="vault-import">Import</button>
-              <button type="button" data-vault-tab="recovery" aria-controls="vault-recovery">Recovery</button>
-              <button type="button" data-vault-tab="cloud" aria-controls="vault-cloud">Account</button>
+          <button type="button" data-center="profile">
+            <svg class="icon" aria-hidden="true"><use href="#person" /></svg><span>Profile</span>
+          </button>
+          <button type="button" data-center="preferences">
+            <svg class="icon" aria-hidden="true"><use href="#filter-sliders" /></svg
+            ><span>Preferences</span>
+          </button>
+          <button type="button" data-center="data" aria-label="Data &amp; backup">
+            <svg class="icon" aria-hidden="true"><use href="#backup" /></svg
+            ><span class="nav-long">Data &amp; backup</span><span class="nav-short">Backup</span>
+          </button>
+          <button type="button" data-center="security">
+            <svg class="icon" aria-hidden="true"><use href="#shield" /></svg><span>Security</span>
+          </button>
+        </nav>
+        <button type="button" class="guest-settings" id="center-guest">
+          <svg class="icon" aria-hidden="true"><use href="#journal" /></svg>Guest settings
+        </button>
+        <button type="button" class="rail-exit" id="center-signout" hidden>
+          <svg class="icon" aria-hidden="true"><use href="#leave" /></svg>Sign out
+        </button>
+        <div class="rail-scene" aria-hidden="true"></div>
+      </aside>
+      <section class="account-content" aria-labelledby="account-heading">
+        <h3 id="account-heading" tabindex="-1">Overview</h3>
+        <div id="account-body"></div>
+        <section id="vault" aria-label="Backup tools" hidden>
+          <template id="vault-content">
+            <div id="vault-actions" class="backup-actions">
+              <button type="button" id="vault-json" class="center-row">
+                <svg class="icon"><use href="#backup" /></svg
+                ><span
+                  ><strong>Download a backup</strong
+                  ><small>Take a copy of every title and rating.</small></span
+                ><svg class="icon"><use href="#next" /></svg>
+              </button>
+              <label class="center-row vault-file"
+                ><svg class="icon"><use href="#journal" /></svg
+                ><span
+                  ><strong>Import a collection</strong
+                  ><small>Review a backup before adding titles.</small></span
+                ><svg class="icon"><use href="#next" /></svg
+                ><input
+                  type="file"
+                  accept=".json,application/json"
+                  id="vault-file"
+                  aria-label="Import a collection"
+              /></label>
+              <button type="button" id="vault-guest" class="center-row" hidden>
+                <svg class="icon"><use href="#person" /></svg
+                ><span><strong>Review guest titles</strong><small></small></span
+                ><svg class="icon"><use href="#next" /></svg>
+              </button>
             </div>
-            <section id="vault-export">
-              <h3>Take your collection with you.</h3>
-              <p>A JSON backup includes your titles, personal ratings, dates and full saved metadata. Artwork travels as poster and backdrop paths. Image files require a connection.</p>
-              <button type="button" class="button primary" id="vault-json">Download JSON backup</button>
-              <div class="vault-rule"><h4>Spreadsheet export</h4>
-                <p>Use CSV to explore ratings and genres in a spreadsheet. Use JSON to restore the full collection.</p>
-                <button type="button" class="button secondary" id="vault-csv">Download CSV</button>
-              </div>
-            </section>
-            <section id="vault-import" hidden>
-              <h3>Bring in a backup.</h3>
-              <p>Choose an AFTERCREDITS JSON file to review its titles and compare it with this browser. Maximum 16 MiB.</p>
-              <label class="button secondary vault-file">Choose JSON file<input type="file" accept=".json,application/json" id="vault-file" /></label>
-            </section>
-            <section id="vault-recovery" hidden><h3>Local recovery</h3>
-              <p>Up to three snapshots are kept in this browser before imports and recoveries. Download a JSON backup to keep a copy outside this browser.</p>
+            <details id="vault-advanced">
+              <summary>Advanced options</summary>
+              <dl class="backup-facts">
+                <div>
+                  <dt>Last backup generated</dt>
+                  <dd id="vault-last"></dd>
+                </div>
+                <div>
+                  <dt>Device storage</dt>
+                  <dd id="vault-local"></dd>
+                </div>
+              </dl>
+              <button type="button" class="button secondary" id="vault-csv">
+                Download spreadsheet (CSV)
+              </button>
+              <h4>Recovery history</h4>
+              <p>
+                Restore a copy saved on this device before an import. Clearing site data removes these
+                copies.
+              </p>
               <div id="vault-history"></div>
-            </section>
-            <section id="vault-cloud" hidden aria-label="Account and cloud sync"></section>
+            </details>
             <section id="vault-preview" class="vault-rule" aria-labelledby="vault-preview-title" hidden>
               <h3 id="vault-preview-title" tabindex="-1">Import preview</h3>
-              <p id="vault-source"></p><dl class="vault-summary" id="vault-summary"></dl>
+              <p id="vault-source"></p>
+              <dl class="vault-summary" id="vault-summary"></dl>
               <div id="vault-errors" class="vault-warning" hidden></div>
               <div id="vault-options">
-                <fieldset class="vault-modes"><legend>Import mode</legend>
-                  <label><input type="radio" name="vault-mode" value="merge" checked /> Merge</label>
-                  <label><input type="radio" name="vault-mode" value="restore" /> Restore</label>
-                </fieldset>
+                <details id="vault-replace">
+                  <summary>Replacement options</summary>
+                  <fieldset class="vault-modes">
+                    <legend>Import mode</legend>
+                    <label
+                      ><input type="radio" name="vault-mode" value="merge" checked /> Keep current
+                      titles</label
+                    >
+                    <label
+                      ><input type="radio" name="vault-mode" value="restore" /> Replace
+                      collection</label
+                    >
+                  </fieldset>
+                </details>
                 <p id="vault-mode-note"></p>
                 <div id="vault-conflicts"></div>
                 <div id="vault-protect" class="vault-warning" hidden>
                   <strong>Replace this collection</strong>
-                  <p>Every current title and rating will be replaced by the previewed archive. Download the current collection first.</p>
-                  <button type="button" class="button secondary" id="vault-copy">Download recovery JSON</button>
-                  <label><input type="checkbox" id="vault-consent" disabled /> I have my recovery file and want to replace this collection.</label>
+                  <p>
+                    Every current title and rating will be replaced by the previewed archive. Download
+                    the current collection first.
+                  </p>
+                  <button type="button" class="button secondary" id="vault-copy">
+                    Download recovery JSON
+                  </button>
+                  <label
+                    ><input type="checkbox" id="vault-consent" disabled /> I have my recovery file and
+                    want to replace this collection.</label
+                  >
                 </div>
                 <button type="button" class="button primary" id="vault-apply">Confirm merge</button>
               </div>
@@ -692,9 +753,10 @@
               <button type="button" id="vault-dismiss" class="text-button">Dismiss reminder</button>
             </div>
             <p id="vault-message" role="status" aria-atomic="true"></p>
-          </div>
-        </div>
-      </template>
+          </template>
+        </section>
+        <p class="cloud-message" id="account-message" role="status" aria-atomic="true"></p>
+      </section>
     </dialog>
     <div id="toast" role="status"></div>
     <noscript><p class="wrap">Enable JavaScript to add and manage your watch journal.</p></noscript>

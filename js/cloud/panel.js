@@ -1,27 +1,39 @@
-import { owner, session, sessionKey, reloadScope } from './scope.js';
-import { signOut, updateDisplayName, resumeConnection } from './auth.js';
-import { syncStatus, syncNow, conflictPreview, resolveConflicts } from './sync.js';
-import { guestCount, guestPreview } from './guest-import.js';
-import { authScreen, field } from './account-forms.js';
+import { owner, configured, session, sessionKey, reloadScope } from './scope.js';
 import { hideDialog, showDialog } from '../motion.js';
 import { icon } from '../views.js';
+import { sorts } from '../discovery.js';
 
-const dialog = document.getElementById('account-dialog');
-const heading = document.getElementById('account-heading');
-const body = document.getElementById('account-body');
-const trigger = document.getElementById('account-open');
-const live = document.getElementById('account-message');
-const closeButton = document.getElementById('account-close');
-let openVault,
+const byId = (id) => document.getElementById(id);
+const dialog = byId('account-dialog'),
+  heading = byId('account-heading'),
+  body = byId('account-body');
+const live = byId('account-message'),
+  nav = byId('center-nav'),
+  exit = byId('center-signout');
+const headings = {
+  overview: 'Overview',
+  profile: 'Profile',
+  preferences: 'Preferences',
+  data: 'Data & backup',
+  security: 'Security',
+  auth: 'Sign in',
+};
+let app,
+  trigger,
+  current,
   cleanup,
+  guestCopy,
+  vault,
+  cloud,
   busy = false,
   closing = false,
-  guestCopy;
-const el = (tag, value) => {
-  const node = document.createElement(tag);
-  if (value !== undefined) node.textContent = value;
-  return node;
-};
+  version = 0;
+function el(tag, value, style) {
+  const element = document.createElement(tag);
+  if (value !== undefined) element.textContent = value;
+  if (style) element.className = style;
+  return element;
+}
 function message(text, error = false) {
   live.textContent = text;
   live.toggleAttribute('data-error', error);
@@ -32,73 +44,76 @@ function page(title) {
   heading.textContent = title;
   body.replaceChildren();
   message('');
-  dialog.scrollTop = 0;
+  heading.parentElement.scrollTop = 0;
   if (dialog.open) heading.focus({ preventScroll: true });
 }
 async function run(progress, work) {
   if (busy || closing) return;
   busy = true;
   body.setAttribute('aria-busy', 'true');
-  closeButton.disabled = true;
+  const focus = document.activeElement;
   body.inert = true;
-  const focused = document.activeElement;
+  nav.inert = true;
+  byId('center-guest').disabled = true;
+  exit.disabled = byId('account-close').disabled = true;
   message(progress);
   try {
     await work();
     if (live.textContent === progress) message('');
-  } catch (err) {
-    message(err.message, true);
+  } catch (error) {
+    message(error.message || 'Please try again.', true);
   } finally {
-    body.inert = false;
-    body.removeAttribute('aria-busy');
-    closeButton.disabled = false;
     busy = false;
-    if (
-      dialog.open &&
-      focused?.isConnected &&
-      !body.contains(document.activeElement) &&
-      document.activeElement !== heading
-    )
-      focused.focus({ preventScroll: true });
+    body.inert = nav.inert = byId('center-guest').disabled = false;
+    exit.disabled = byId('account-close').disabled = false;
+    body.removeAttribute('aria-busy');
+    if (dialog.open && document.activeElement === document.body)
+      (focus?.isConnected ? focus : heading).focus({ preventScroll: true });
   }
 }
-function action(parent, label, fn, style = '', progress = 'Working…') {
-  const b = el('button', label);
-  b.type = 'button';
-  b.className = style;
-  if (parent.classList.contains('account-menu')) b.append(icon('next'));
-  b.onclick = () => run(progress, fn);
-  parent.append(b);
-  return b;
+function action(parent, label, work, style = 'account-link', progress = '') {
+  const button = el('button', label, style);
+  button.type = 'button';
+  button.onclick = () => run(progress, work);
+  parent.append(button);
+  return button;
 }
 async function close() {
-  if (closing) return;
+  if (closing || busy) return;
   closing = true;
+  version++;
   cleanup?.();
   cleanup = null;
+  vault?.closeData();
   await hideDialog(dialog, trigger);
   body.replaceChildren();
-  message('');
   guestCopy = null;
+  current = null;
   trigger.focus({ preventScroll: true });
   closing = false;
 }
-closeButton.onclick = () => {
-  if (!busy) close();
+byId('account-close').onclick = close;
+dialog.oncancel = (event) => {
+  event.preventDefault();
+  close();
 };
-dialog.addEventListener('cancel', (e) => {
-  e.preventDefault();
-  if (!busy) close();
-});
-dialog.addEventListener('click', (e) => {
-  if (e.target !== dialog || closing || busy) return;
+dialog.onclick = (event) => {
+  if (event.target !== dialog) return;
   const r = dialog.getBoundingClientRect();
-  if (e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom)
+  if (
+    event.clientX < r.left ||
+    event.clientX > r.right ||
+    event.clientY < r.top ||
+    event.clientY > r.bottom
+  )
     close();
-});
+};
 async function leave() {
   const id = owner || session()?.id;
+  const { signOut } = await import('./auth.js');
+  window.dispatchEvent(new Event('cloud-signing-out'));
   document.body.classList.add('account-leaving');
+  vault?.closeData();
   page('Signing out…');
   try {
     const remote = await signOut(id);
@@ -107,211 +122,267 @@ async function leave() {
     } catch {}
     reloadScope();
   } catch (error) {
-    document.body.classList.remove('account-leaving');
     if (session()?.id !== id) return reloadScope();
-    if (owner) connected();
+    document.body.classList.remove('account-leaving');
+    window.dispatchEvent(new Event('cloud-signout-cancelled'));
+    await navigate('security');
     throw error;
   }
 }
-const labels = {
-  Synced: 'Up to date',
-  Syncing: 'Syncing…',
-  Offline: 'Offline · saved on this device',
-  'Pending changes': 'Waiting to sync',
-  Conflict: 'Changes need review',
-  Error: 'Sync paused',
+exit.onclick = () => run('Signing out…', leave);
+nav.onclick = (event) => {
+  const button = event.target.closest('[data-center]');
+  if (!button || busy || closing) return;
+  const section = button.dataset.center;
+  if (section !== current || heading.textContent !== headings[section]) navigate(section);
 };
-function updateStatus() {
-  if (!owner || !dialog.open) return;
-  const label = body.querySelector('.cloud-state');
-  if (!label) return;
-  try {
-    const state = syncStatus();
-    label.textContent = labels[state.state] || 'Checking sync';
-    const pending = body.querySelector('.account-pending');
-    if (pending) pending.hidden = !state.pending;
-    const review = body.querySelector('.cloud-review');
-    if (review) review.hidden = state.state !== 'Conflict';
-    const retry = body.querySelector('.cloud-retry');
-    if (retry) retry.hidden = state.state !== 'Error';
-    const summary = body.querySelector('.cloud-last');
-    if (summary) {
-      const info = [];
-      if (state.last) info.push('Last synced ' + new Date(state.last).toLocaleString() + '.');
-      if (state.pending)
-        info.push(
-          state.pending +
-            (state.pending === 1 ? ' change' : ' changes') +
-            ' saved on this device to sync.'
-        );
-      summary.textContent = info.join(' ');
-      summary.hidden = !info.length;
-    }
-    const note = body.querySelector('.cloud-issue');
-    if (note) {
-      note.textContent =
-        state.state === 'Error'
-          ? 'Your local changes are safe. Check your connection and try syncing again.'
-          : state.state === 'Conflict'
-            ? 'A title changed on two devices. Choose the version to keep.'
-            : '';
-      note.hidden = !note.textContent;
-    }
-  } catch {
-    label.textContent = 'Archive needs attention';
-    message(
-      'This browser could not read its saved copy. Open Data & backup to inspect the archive.',
-      true
-    );
+byId('center-guest').onclick = () => {
+  if (!busy && !closing) navigate('overview');
+};
+function identity() {
+  const s = owner && session();
+  if (owner && (!s || s.id !== owner)) {
+    reloadScope();
+    return {};
   }
+  const name = s ? s.displayName || s.email.split('@')[0] : 'Guest journal';
+  const initials = Array.from(name.trim().split(/\s+/u).slice(0, 2), (part) => Array.from(part)[0])
+    .join('')
+    .toLocaleUpperCase();
+  return { name, email: s?.email, initials };
 }
-function menuList() {
-  const list = el('div');
-  list.className = 'account-menu';
-  body.append(list);
-  return list;
+function profileCard(counts) {
+  const { name, email, initials } = identity();
+  const card = el('div', undefined, 'archive-pass');
+  const avatar = el('span', undefined, 'center-avatar');
+  if (owner) avatar.textContent = initials;
+  else avatar.append(icon('person'));
+  avatar.setAttribute('aria-hidden', 'true');
+  const caption = el('div', undefined, 'pass-caption');
+  const title = el('strong', name);
+  title.id = 'center-name';
+  caption.append(title, el('small', email || 'On this device'));
+  card.append(avatar, caption);
+  if (counts) {
+    const ledger = el('dl', undefined, 'center-counts');
+    for (const [type, label] of [
+      ['movie', 'Movies'],
+      ['tv', 'TV series'],
+    ]) {
+      const pair = el('div'),
+        count = el('dd', app.counts()[type]);
+      count.id = 'center-' + type;
+      pair.append(el('dt', label), count);
+      ledger.append(pair);
+    }
+    card.append(ledger);
+  }
+  body.append(card);
+}
+function updateStatus() {
+  const label = body.querySelector('.cloud-state');
+  if (!dialog.open || !label) return;
+  let title = 'Saved on this device';
+  let note = 'Your guest journal is local to this browser.';
+  let retry = false,
+    review = false,
+    diagnostic = '';
+  if (owner) {
+    try {
+      const s = cloud.syncStatus();
+      review = s.state === 'Conflict';
+      retry = s.state === 'Error';
+      if (review || retry) {
+        title = 'Needs attention';
+        note = review
+          ? 'A title changed in two places. Choose which version to keep.'
+          : 'Your copy is on this device. Automatic saving needs another try.';
+        diagnostic = s.error;
+      } else if (s.state === 'Offline') {
+        title = s.last || s.pending || s.inFlight ? 'Offline · saved on this device' : 'Offline';
+        note = s.last
+          ? 'Changes will sync when you reopen or reconnect.'
+          : 'Reconnect to download your private archive.';
+      } else if (s.pending || s.inFlight || !s.last) {
+        title = s.pending || s.inFlight ? 'Saving changes' : 'Opening your archive';
+        note = 'You can keep using your collection.';
+      } else {
+        title = 'All changes saved';
+        note = 'Your private archive is up to date.';
+      }
+    } catch {
+      title = 'Needs attention';
+      note = 'This browser could not read its saved copy.';
+    }
+  }
+  if (app.storageNotice()) {
+    title = 'Check device storage';
+    note = app.storageNotice();
+  }
+  for (const [node, text] of [
+    [label, title],
+    [body.querySelector('.cloud-issue'), note],
+  ])
+    if (node.textContent !== text) node.textContent = text;
+  body.querySelector('.save-state').dataset.attention = String(
+    retry || review || !!app.storageNotice()
+  );
+  body.querySelector('.cloud-review').hidden = !review;
+  body.querySelector('.cloud-retry').hidden = !retry;
+  const details = body.querySelector('.cloud-diagnostic');
+  details.hidden = !diagnostic;
+  details.lastChild.textContent = diagnostic || '';
 }
 function statusBlock() {
-  const state = el('strong');
-  state.className = 'cloud-state';
-  state.setAttribute('role', 'status');
-  const note = el('p');
-  note.className = 'cloud-issue';
-  body.append(state, note);
-}
-function connected() {
-  const s = session();
-  if (!s || s.id !== owner) return reloadScope();
-  page(s.displayName || 'Your account');
-  body.append(el('p', s.email));
-  statusBlock();
-  const list = menuList();
-  action(list, 'Review sync conflicts', conflicts, 'cloud-review');
-  action(list, 'Retry sync', syncNow, 'cloud-retry');
-  action(list, 'Settings', settings);
-  action(list, 'Data & backup', async () => {
-    await close();
-    await openVault('export', trigger);
-  });
-  const count = guestCount();
-  if (count)
-    action(
-      list,
-      'Review guest titles (' + count + ')',
-      async () => {
-        const guest = guestPreview();
-        await close();
-        await openVault('import', trigger, guest);
-      },
-      '',
-      'Checking guest titles…'
-    );
-  action(list, 'Sign out', leave, 'account-logout', 'Signing out…');
-  const pending = el('p', 'Unsynced changes stay on this device for your next sign-in.');
-  pending.className = 'account-pending';
-  body.append(pending);
+  const block = el('div', undefined, 'save-state'),
+    copy = el('div');
+  const label = el('strong', undefined, 'cloud-state');
+  label.setAttribute('role', 'status');
+  copy.append(label, el('p', undefined, 'cloud-issue'));
+  block.append(icon('check'), copy);
+  action(copy, 'Review changes', conflicts, 'cloud-review account-link');
+  action(copy, 'Try again', () => cloud.syncNow(), 'cloud-retry account-link');
+  const details = el('details', undefined, 'cloud-diagnostic');
+  details.append(el('summary', 'Technical details'), el('p'));
+  copy.append(details);
+  body.append(block);
   updateStatus();
 }
-function settings() {
-  const s = session();
-  page('Settings');
-  const form = el('form');
-  form.className = 'cloud-form';
-  const name = field(form, 'Display name', 'text', 'nickname', s.displayName || '');
+function guestAccess() {
+  if (configured) action(body, 'Sign in', () => navigate('auth'), 'button primary');
+}
+function overview() {
+  profileCard(true);
+  statusBlock();
+  if (!owner) guestAccess();
+}
+async function profile(ticket) {
+  profileCard(false);
+  if (!owner) {
+    guestAccess();
+    return;
+  }
+  const [{ field }, { updateDisplayName }] = await Promise.all([
+    import('./account-forms.js'),
+    import('./auth.js'),
+  ]);
+  if (ticket !== version) return;
+  const form = el('form', undefined, 'cloud-form');
+  const name = field(form, 'Display name', 'text', 'nickname', session().displayName || '');
   name.maxLength = 80;
-  const save = el('button', 'Save name');
-  save.className = 'button primary';
-  form.append(save);
-  form.onsubmit = (e) => {
-    e.preventDefault();
+  name.pattern = '.*\\S.*';
+  const email = field(form, 'Email', 'email', 'email', session().email);
+  email.readOnly = true;
+  form.append(el('button', 'Save name', 'button primary'));
+  form.onsubmit = (event) => {
+    event.preventDefault();
     run('Saving name…', async () => {
       await updateDisplayName(owner, name.value);
       window.dispatchEvent(new Event('account-profile'));
-      connected();
+      await navigate('profile');
       message('Display name saved.');
     });
   };
   body.append(form);
-  statusBlock();
-  const last = el('p');
-  last.className = 'cloud-last';
-  body.append(
-    last,
-    el(
-      'p',
-      navigator.serviceWorker?.controller
-        ? 'This archive is ready to reopen offline.'
-        : 'Offline reopening is available once this device finishes saving the app.'
-    )
-  );
-  const list = menuList();
-  action(list, 'Sync now', syncNow, '', 'Syncing…');
-  action(list, 'Back to account', connected);
-  updateStatus();
 }
-function conflicts() {
-  const p = conflictPreview();
-  if (!p) return connected();
-  page('Review changes');
-  body.append(
-    el('p', 'Choose the version to keep for each title. Your other titles will sync automatically.')
-  );
-  const choices = new Map();
-  for (const group of p.conflicts) {
-    const title = (group.local[0] || group.remote[0] || group.base[0]).title;
-    const comparison = el('dl');
-    comparison.className = 'account-comparison';
-    for (const [source, entries] of [['This device', group.local], ['Cloud', group.remote]]) {
-      const column = el('div');
-      column.append(el('dt', source));
-      if (!entries.length) column.append(el('dd', 'Deleted'));
-      for (const entry of entries) {
-        const rating = entry.rating.toFixed(1) + ' / 10';
-        column.append(el('dd', entry.title === title ? rating : entry.title + ' · ' + rating));
-      }
-      comparison.append(column);
-    }
-    const detail = el('details');
-    detail.append(el('summary', 'Compare all saved fields'));
-    detail.ontoggle = () => {
-      if (!detail.open || detail.childElementCount > 1) return;
-      for (const [label, entries] of [
-        ['Earlier', group.base],
-        ['This device', group.local],
-        ['Cloud', group.remote],
-      ])
-        detail.append(
-          el('strong', label),
-          el('pre', entries.length ? JSON.stringify(entries, null, 2) : 'Deleted / absent')
-        );
-    };
-    const label = el('label', 'Version for ' + title);
-    const select = el('select');
-    for (const [text, value] of [
-      ['Choose a version', ''],
-      ['Keep this device', 'device'],
-      ['Keep cloud', 'cloud'],
-    ])
-      select.add(new Option(text, value));
-    select.onchange = () => {
-      if (select.value) choices.set(group.key, select.value);
-      else choices.delete(group.key);
-      apply.disabled = choices.size !== p.conflicts.length;
-    };
-    label.append(select);
-    body.append(el('h3', title), comparison, detail, label);
+function preferences() {
+  const form = el('div', undefined, 'center-prefs');
+  function select(id, label, options, value, save) {
+    const wrap = el('div'),
+      caption = el('label', label),
+      input = el('select');
+    input.id = 'preference-' + id;
+    caption.htmlFor = input.id;
+    for (const [key, text] of options) input.add(new Option(text, key));
+    input.value = value;
+    input.onchange = () => save(input.value);
+    wrap.append(caption, input);
+    form.append(wrap);
   }
-  const apply = action(
-    body,
-    'Confirm resolutions',
-    async () => {
-      await resolveConflicts(p.token, choices);
-      connected();
-    },
-    'button primary'
+  select(
+    'layout',
+    'Collection layout',
+    [
+      ['screening', 'Screening Room'],
+      ['gallery', 'Gallery'],
+      ['compact', 'Compact'],
+    ],
+    app.prefs.layout,
+    app.setLayout
   );
-  apply.disabled = true;
-  action(body, 'Back to account', connected, 'account-link');
+  select('movie-sort', 'Movie sort order', sorts, app.prefs.movie.sort, (value) =>
+    app.setSort('movie', value)
+  );
+  select('tv-sort', 'TV series sort order', sorts, app.prefs.tv.sort, (value) =>
+    app.setSort('tv', value)
+  );
+  const label = el('label', undefined, 'ambient-choice'),
+    check = el('input');
+  check.type = 'checkbox';
+  const caption = el('span', 'Ambient motion');
+  const note = el('small');
+  caption.append(note);
+  label.append(caption, check);
+  function sync() {
+    check.checked = app.ambient.enabled();
+    check.disabled = app.ambient.forced();
+    note.textContent = check.disabled
+      ? 'Paused by your device’s motion or performance settings.'
+      : 'Gentle movement in the cinema street.';
+  }
+  sync();
+  check.onchange = () => app.ambient.setEnabled(check.checked);
+  window.addEventListener('ambient-change', sync);
+  cleanup = () => window.removeEventListener('ambient-change', sync);
+  form.append(label);
+  body.append(form);
+}
+function security() {
+  if (!owner) {
+    body.append(
+      el(
+        'p',
+        configured
+          ? 'Sign in to manage your password.'
+          : 'This journal uses guest storage on this device.'
+      )
+    );
+    guestAccess();
+    return;
+  }
+  body.append(el('p', 'Manage access to ' + session().email + '.'));
+  action(
+    body,
+    'Reset password',
+    async () => {
+      const { authScreen } = await import('./account-forms.js');
+      authScreen(
+        {
+          ...ui,
+          security: () => {
+            page('Security');
+            security();
+          },
+        },
+        'recover',
+        session().email
+      );
+    },
+    'button secondary'
+  );
+  body.append(el('p', 'Signing out keeps pending changes on this device for your next sign-in.'));
+  action(body, 'Sign out of this device', leave, 'account-link');
+}
+async function conflicts() {
+  vault?.closeData();
+  const section = current;
+  const { reviewChanges } = await import('./conflict-view.js');
+  await reviewChanges(
+    ui,
+    cloud,
+    () => navigate(section),
+    section === 'data' ? 'Back to data & backup' : 'Back to overview'
+  );
 }
 const ui = {
   el,
@@ -340,46 +411,106 @@ const ui = {
     reloadScope();
   },
 };
-export function openAccount(vault) {
-  if (dialog.open || closing) return;
-  openVault = vault;
-  showDialog(dialog, trigger);
-  if (owner) connected();
-  else if (session()) {
-    page('Open your archive');
-    action(
-      body,
-      'Continue',
-      async () => {
-        await resumeConnection(session()?.id);
-        reloadScope();
-      },
-      'button primary'
-    );
-    action(body, 'Sign out', leave, 'account-link');
-  } else {
-    authScreen(ui);
-    try {
-      if (sessionStorage.getItem('aftercredits.session-ended')) {
-        sessionStorage.removeItem('aftercredits.session-ended');
-        message(
-          'Your session ended. Sign in to reopen your archive. Unsynced changes stay on this device.'
+async function navigate(section) {
+  const ticket = ++version;
+  current = section;
+  if (vault && !byId('vault').hidden) vault.closeData();
+  dialog.dataset.sectionName = section;
+  for (const btn of nav.querySelectorAll('button')) {
+    if (btn.dataset.center === section) btn.setAttribute('aria-current', 'page');
+    else btn.removeAttribute('aria-current');
+  }
+  exit.hidden = !owner;
+  page(headings[section]);
+  try {
+    if (owner) {
+      cloud ||= await import('./sync.js');
+      if (ticket !== version) return;
+    }
+    if (section === 'overview') overview();
+    else if (section === 'profile') await profile(ticket);
+    else if (section === 'preferences') preferences();
+    else if (section === 'security') security();
+    else if (section === 'data') {
+      const [data, guest] = await Promise.all([
+        import('../vault.js'),
+        owner ? import('./guest-import.js') : null,
+      ]);
+      if (ticket !== version) return;
+      vault = data;
+      statusBlock();
+      vault.openData(app.refresh, app.updateVaultControl, guest);
+    } else if (section === 'auth') {
+      if (session() && !owner) {
+        page('Open your archive');
+        action(
+          body,
+          'Continue',
+          async () => {
+            const { resumeConnection } = await import('./auth.js');
+            await resumeConnection(session().id);
+            reloadScope();
+          },
+          'button primary'
         );
-      } else if (sessionStorage.getItem('aftercredits.logout-note')) {
-        sessionStorage.removeItem('aftercredits.logout-note');
-        message('Signed out on this device. The server could not be reached.');
+        action(body, 'Sign out', leave);
+        return;
       }
-    } catch {}
+      const { authScreen } = await import('./account-forms.js');
+      if (ticket !== version) return;
+      authScreen(ui);
+      try {
+        for (const [key, text] of [
+          [
+            'aftercredits.session-ended',
+            'Your session ended. Sign in to reopen your archive. Unsynced changes stay on this device.',
+          ],
+          [
+            'aftercredits.logout-note',
+            'Signed out on this device. The server could not be reached.',
+          ],
+        ])
+          if (sessionStorage.getItem(key)) {
+            sessionStorage.removeItem(key);
+            message(text);
+            break;
+          }
+      } catch {}
+    }
+  } catch (error) {
+    if (ticket === version)
+      message(error.message || 'This section could not open. Try again.', true);
   }
 }
+export async function openAccount(section, opener, controls) {
+  if (closing || dialog.open) return;
+  app = controls;
+  trigger = opener;
+  showDialog(dialog, trigger);
+  await navigate(section);
+}
 window.addEventListener('cloud-state', updateStatus);
-window.addEventListener('storage', (e) => {
+window.addEventListener('archive-updated', () => {
+  if (!dialog.open) return;
+  for (const [type, count] of Object.entries(app.counts())) {
+    const elem = byId('center-' + type);
+    if (elem) elem.textContent = count;
+  }
+  updateStatus();
+});
+window.addEventListener('storage', (event) => {
   if (
-    e.key === sessionKey &&
-    owner &&
     dialog.open &&
-    body.querySelector('.account-logout') &&
+    current === 'overview' &&
+    owner &&
+    event.key === sessionKey &&
     session()?.id === owner
-  )
-    heading.textContent = session().displayName || 'Your account';
+  ) {
+    const title = byId('center-name');
+    if (title) {
+      const { name, initials } = identity();
+      title.textContent = name;
+      body.querySelector('.center-avatar').textContent = initials;
+    }
+  }
 });

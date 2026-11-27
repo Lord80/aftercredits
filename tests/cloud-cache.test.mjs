@@ -128,3 +128,30 @@ test('a restore that swaps stable IDs can be represented in a single atomic chan
   assert.deepEqual(working(validateCache(ack)), next);
   assert.equal(ack.pending.length, 0);
 });
+
+test('independent changes to one title preserve its name, rating and nested metadata', () => {
+  const base = entry('stable', 'A screening', {
+    metadata: { overview: 'A walk', genres: [{ id: 3, name: 'Drama' }] },
+    edition: 'original',
+  });
+  const local = { ...base, rating: 8.5, metadata: { ...base.metadata, originalTitle: '空' } };
+  delete local.edition;
+  const remote = {
+    ...base,
+    title: 'New display name',
+    metadata: { ...base.metadata, overview: 'A longer walk' },
+  };
+  const cache = withEntries(mirror(base), [local]);
+  const incoming = { rows: [{ id: base.id, revision: 2, entry: remote }], cursor: 2 };
+  const result = reconcile(cache, incoming);
+  assert.deepEqual(result.conflicts, []);
+  assert.deepEqual(result.entries, [
+    {
+      ...local,
+      title: remote.title,
+      metadata: { ...local.metadata, overview: remote.metadata.overview },
+    },
+  ]);
+  incoming.rows[0].entry = { ...remote, rating: 9 };
+  assert.equal(reconcile(cache, incoming).conflicts.length, 1);
+});

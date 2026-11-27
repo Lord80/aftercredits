@@ -32,62 +32,6 @@
   outline: 2px solid #a75c33;
   outline-offset: 2px;
 }
-#account-dialog {
-  --wash: #e7f3f0ec;
-  width: min(420px, calc(100% - 24px));
-  padding: 0;
-  margin: auto;
-  border-radius: 20px 8px 20px 8px;
-  overflow-wrap: anywhere;
-  background-color: var(--wash);
-  color: var(--brand-ink);
-}
-#account-dialog::backdrop {
-  background: #17384270;
-}
-.account-cover {
-  height: clamp(58px, 11vh, 90px);
-  position: relative;
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  padding: 12px 15px;
-  background:
-    linear-gradient(100deg, #e8f4f5d9, transparent 60%),
-    url('../assets/images/street/plaza-portrait-compact.webp') center 43% / cover;
-  border-bottom: 1px solid #ffffffd6;
-}
-.account-splice {
-  width: 24px;
-  height: 26px;
-  fill: var(--brand-ink);
-}
-#account-close {
-  position: static;
-  min-height: 40px;
-  min-width: 40px;
-  background: #f4f9f5ec;
-}
-.account-content {
-  padding: clamp(18px, 4vw, 30px);
-}
-#account-heading {
-  font: 400 clamp(34px, 6vw, 44px)/1.04 var(--serif);
-  letter-spacing: -0.035em;
-  margin: 0;
-}
-#account-heading:focus {
-  outline: none;
-}
-#account-body p,
-#account-message {
-  font-size: 14px;
-  line-height: 1.5;
-}
-#account-body p {
-  margin: 7px 0 16px;
-  color: #324f57;
-}
 #account-dialog .cloud-form {
   display: grid;
   gap: 14px;
@@ -103,7 +47,7 @@
     600 13px/1.4 'DM Sans',
     sans-serif;
 }
-#account-dialog input {
+#account-dialog .account-field input {
   width: 100%;
   min-height: 46px;
   padding: 9px 12px;
@@ -150,113 +94,6 @@
   font-weight: 600;
   font-size: 13px;
 }
-.account-menu {
-  display: grid;
-  margin-top: 16px;
-}
-.account-menu button {
-  background: transparent;
-  text-align: start;
-  border-top: 1px solid #738f954d;
-  padding: 10px 3px;
-  font:
-    500 15px/1.4 'DM Sans',
-    sans-serif;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  color: var(--brand-ink);
-}
-.account-menu .icon {
-  width: 15px;
-  height: 15px;
-}
-.account-menu button:hover,
-.account-link:hover {
-  color: #126461;
-}
-.account-menu button:hover {
-  background: #ffffff54;
-}
-.account-menu button:active {
-  background: #bdd8d36b;
-}
-.account-menu .account-logout {
-  color: #7d382e;
-}
-#account-dialog .cloud-state {
-  font-size: 13px;
-  font-weight: 600;
-  border-radius: 2px;
-  background: #d7e9e2;
-  border-inline-start: 3px solid #488172;
-  padding: 5px 10px;
-  display: inline-block;
-}
-#account-message {
-  margin: 12px 0 0;
-}
-#account-message:empty {
-  margin: 0;
-}
-#account-message[data-error] {
-  color: #792c1e;
-}
-#account-dialog details {
-  padding: 8px 0;
-}
-#account-dialog summary {
-  cursor: pointer;
-}
-#account-dialog pre {
-  white-space: pre-wrap;
-  overflow: auto;
-  max-height: 145px;
-  font: 12px/1.45 var(--mono);
-}
-#account-dialog select {
-  width: 100%;
-  margin-block: 5px 12px;
-  min-height: 44px;
-}
-#account-dialog [aria-busy='true'] {
-  cursor: progress;
-}
-#account-dialog button:disabled {
-  opacity: 0.65;
-}
-@media (max-width: 620px) {
-  .header-inner {
-    gap: 6px;
-  }
-  #account-open {
-    padding: 0;
-    min-width: 44px;
-  }
-  #account-open span {
-    display: none;
-  }
-  #account-dialog {
-    max-height: calc(100dvh - max(16px, env(safe-area-inset-bottom)));
-  }
-}
-@media (max-width: 355px) {
-  .header-inner .brand-lettering svg {
-    width: 82px;
-  }
-}
-@media (max-height: 520px) {
-  .account-cover {
-    height: 46px;
-    padding-block: 3px;
-  }
-}
-@media (prefers-reduced-transparency: reduce) {
-  #account-dialog {
-    background: #e8f3f1;
-  }
-}
-
 .account-leaving :is(.site-header, .journal, .footer, #toast) {
   visibility: hidden;
 }
@@ -275,4 +112,547 @@
 .account-comparison dd {
   margin: 5px 0 0;
   font: 500 16px/1.4 var(--mono);
+}
+
+/* One optical window, with a fixed navigation plane and a scrollable reading plane. */
+#account-dialog {
+  --center-rule: #597d803c;
+  width: min(952px, calc(100% - 56px));
+  height: min(654px, calc(100dvh - 64px));
+  max-height: none;
+  padding: 0;
+  margin: auto;
+  border: 1px solid #effbf8;
+  border-radius: 23px 11px 23px 11px;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+  color: var(--brand-ink);
+  background: linear-gradient(132deg, #eff8f5f2, #e3eef0f5 66%, #e4e6e9f7);
+  box-shadow:
+    var(--rim),
+    0 32px 84px -24px #142e46a6;
+}
+#account-dialog[open] {
+  display: grid;
+  grid-template: auto minmax(0, 1fr) / 200px minmax(0, 1fr);
+}
+#account-dialog::backdrop {
+  background: linear-gradient(120deg, #13334070, #20374e60);
+}
+.center-bar {
+  grid-column: 1/-1;
+  display: flex;
+  gap: 12px;
+  padding: 10px 18px;
+  align-items: center;
+  border-bottom: 1px solid var(--center-rule);
+  background: linear-gradient(105deg, #f6fcfac9, #e5f0f297);
+}
+.center-mark {
+  display: grid;
+  place-items: center;
+  color: var(--brand-ink);
+}
+.center-mark svg {
+  width: 28px;
+  height: 31px;
+  fill: currentColor;
+}
+#center-title {
+  margin: 0;
+  font:
+    600 15px/1.2 'DM Sans',
+    sans-serif;
+  letter-spacing: -0.02em;
+}
+#account-close {
+  margin-inline-start: auto;
+  width: 42px;
+  height: 42px;
+  display: grid;
+  place-items: center;
+}
+#account-close .icon {
+  width: 18px;
+  height: 18px;
+}
+.center-rail {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  padding: 26px 12px 18px;
+  background: #214750;
+  color: #f2f9f6;
+  border-right: 1px solid #c2d4d3;
+}
+.rail-scene {
+  position: absolute;
+  z-index: -1;
+  inset: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(to bottom, #244852 15%, #254852eb 42%, #223d4d58 79%, #143946c4),
+    url('../assets/images/street/plaza-portrait-compact.webp') 45% 92% / auto 78% no-repeat;
+}
+#center-nav {
+  display: grid;
+  gap: 4px;
+}
+#center-nav button,
+.rail-exit {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 46px;
+  padding: 8px 14px;
+  text-align: start;
+  background: transparent;
+  color: inherit;
+  border: 1px solid transparent;
+  border-radius: 9px;
+  font:
+    500 14px/1.2 'DM Sans',
+    sans-serif;
+}
+#center-nav .icon,
+.rail-exit .icon,
+.center-row .icon,
+.save-state > .icon {
+  width: 18px;
+  height: 18px;
+  flex: none;
+}
+#center-nav button:hover,
+.rail-exit:hover {
+  background: #d6f7f51a;
+}
+#center-nav button[aria-current] {
+  border-color: #d3ede99e;
+  color: #173f49;
+  background: linear-gradient(115deg, #e4f5ee, #c5dbdce8);
+  box-shadow:
+    inset 0 1px #fff9,
+    0 3px 12px #14324240;
+}
+.rail-exit {
+  margin-top: auto;
+  background: #123645b8;
+  align-self: stretch;
+}
+.center-rail button:focus-visible {
+  outline: 3px solid #fff4c9;
+  outline-offset: 1px;
+}
+.account-content {
+  min-width: 0;
+  min-height: 0;
+  overflow-y: auto;
+  scrollbar-gutter: stable;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  padding: clamp(24px, 3.3vw, 46px) clamp(22px, 4.1vw, 57px);
+}
+#account-heading {
+  margin: 0 0 24px;
+  font: 400 clamp(36px, 4.8vw, 56px)/1 var(--serif);
+  letter-spacing: -0.042em;
+}
+#account-heading:focus {
+  outline: none;
+}
+#account-body p,
+#account-message {
+  font:
+    400 14px/1.55 'DM Sans',
+    sans-serif;
+  color: #36535b;
+  margin: 8px 0 18px;
+}
+#account-body .primary {
+  width: fit-content;
+  min-width: 132px;
+}
+#account-dialog .cloud-form {
+  max-width: 425px;
+}
+#account-dialog .account-links {
+  max-width: 425px;
+}
+#account-dialog :is(button, input, select, summary):focus-visible {
+  outline: 3px solid #805b40;
+  outline-offset: 2px;
+}
+#account-dialog .center-rail button:focus-visible {
+  outline-color: #fff4c9;
+}
+#account-message:empty {
+  margin: 0;
+}
+#account-message[data-error] {
+  color: #832e20;
+}
+#account-dialog summary {
+  cursor: pointer;
+  padding-block: 12px;
+  font-size: 14px;
+  font-weight: 600;
+}
+#account-dialog pre {
+  white-space: pre-wrap;
+  max-height: 160px;
+  overflow: auto;
+  font: 12px/1.5 var(--mono);
+}
+#account-dialog button:disabled {
+  opacity: 0.6;
+}
+.archive-pass {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 18px;
+  padding: clamp(18px, 3vw, 30px);
+  border: 1px solid #c4d5d4;
+  border-top-color: white;
+  border-radius: 14px 5px 14px 5px;
+  background: linear-gradient(118deg, #f9f8ef 0%, #e1ece4 52%, #c3d9da);
+  box-shadow:
+    inset 0 0 0 1px #ffffff7a,
+    0 7px 19px -14px #33515d;
+}
+.archive-pass::after {
+  content: '';
+  position: absolute;
+  z-index: -1;
+  right: -55px;
+  top: -50px;
+  width: 155px;
+  height: 205px;
+  border: 13px double #628c911f;
+  border-radius: 36% 0 43% 0;
+  transform: rotate(32deg);
+  box-shadow:
+    0 0 0 8px #f4f6e93d,
+    0 0 0 10px #60828c1a;
+}
+.center-avatar {
+  display: grid;
+  place-items: center;
+  width: 62px;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  color: #f5f5df;
+  background: linear-gradient(135deg, #416469, #224751 72%);
+  border: 1px solid #e2f3ea;
+  box-shadow:
+    0 0 0 2px #97b3ac8a,
+    inset 0 1px #bad4c45c;
+  font: 400 32px/1 var(--serif);
+}
+.center-avatar .icon {
+  width: 24px;
+  height: 24px;
+}
+.pass-caption {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+.pass-caption strong {
+  font: 400 clamp(28px, 3vw, 40px)/1.05 var(--serif);
+  letter-spacing: -0.025em;
+}
+.pass-caption small,
+.center-counts dt,
+.center-row small,
+.ambient-choice small,
+.backup-facts dt {
+  font:
+    400 13px/1.45 'DM Sans',
+    sans-serif;
+  color: #3c595d;
+}
+.center-counts {
+  grid-column: 1/-1;
+  display: flex;
+  margin: 4px 0 0;
+  padding: 18px 0 0;
+  border-top: 1px solid var(--center-rule);
+}
+.center-counts div {
+  display: flex;
+  flex-direction: column-reverse;
+  gap: 4px;
+  padding-right: clamp(24px, 5vw, 52px);
+}
+.center-counts div + div {
+  padding-left: clamp(24px, 5vw, 52px);
+  border-left: 1px solid var(--center-rule);
+}
+.center-counts dd {
+  margin: 0;
+  font: 400 40px/1 var(--serif);
+  font-variant-numeric: tabular-nums;
+}
+.save-state {
+  display: flex;
+  align-items: flex-start;
+  gap: 13px;
+  margin: 22px 0;
+}
+.save-state > .icon {
+  box-sizing: content-box;
+  padding: 5px;
+  background: #d4e7df;
+  color: #245750;
+  border: 1px solid #a4bdb2;
+  border-radius: 50%;
+}
+.save-state[data-attention='true'] > .icon {
+  color: #80512a;
+  background: #faecda;
+  border-color: #bea583;
+}
+.cloud-state,
+.center-row strong {
+  font:
+    600 15px/1.45 'DM Sans',
+    sans-serif;
+}
+#account-body .cloud-issue {
+  font-size: 13px;
+  margin: 2px 0 0;
+}
+.center-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  min-height: 69px;
+  padding: 13px 9px;
+  background: transparent;
+  color: var(--brand-ink);
+  text-align: start;
+  border: 0;
+  border-bottom: 1px solid var(--center-rule);
+}
+.backup-actions {
+  margin-block: 14px;
+  border-top: 1px solid var(--center-rule);
+}
+.center-row span {
+  display: grid;
+  gap: 2px;
+  flex: 1;
+}
+.center-row .icon:last-child {
+  width: 14px;
+  height: 14px;
+}
+.center-row:is(:hover, :focus-within) {
+  background: #f9fffc80;
+}
+.center-prefs {
+  display: grid;
+  gap: 16px;
+}
+.center-prefs label,
+.account-field label {
+  font:
+    600 14px/1.45 'DM Sans',
+    sans-serif;
+}
+#account-dialog select {
+  width: 100%;
+  min-height: 44px;
+  background: #f5fbf8;
+  color: #254650;
+  border: 1px solid #8ea8a9;
+  border-radius: 7px;
+  padding: 8px 10px;
+  margin: 5px 0;
+}
+.ambient-choice {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 15px;
+  padding: 16px 0;
+  border-top: 1px solid var(--center-rule);
+}
+.ambient-choice small {
+  display: block;
+}
+.ambient-choice input {
+  width: 22px;
+  height: 22px;
+  accent-color: #275a60;
+}
+.backup-facts {
+  display: grid;
+  gap: 12px;
+  padding-bottom: 14px;
+}
+#vault-advanced h4 {
+  margin-top: 24px;
+}
+@media (min-width: 681px) and (prefers-reduced-motion: no-preference) {
+  #center-nav button,
+  .center-row {
+    transition:
+      background-color 0.16s,
+      color 0.16s;
+  }
+  #account-body > :first-child {
+    animation: center-arrive 0.2s ease-out;
+  }
+  @keyframes center-arrive {
+    from {
+      transform: translateY(3px);
+      opacity: 0.82;
+    }
+  }
+}
+@media (max-width: 680px) {
+  .header-inner {
+    gap: 6px;
+  }
+  #account-open {
+    padding: 0;
+    min-width: 44px;
+  }
+  #account-open span {
+    display: none;
+  }
+  #account-dialog {
+    inset: 0;
+    width: 100%;
+    max-width: 100%;
+    height: 100dvh;
+    max-height: 100dvh;
+    border: 0;
+    border-radius: 0;
+    margin: 0;
+  }
+  #account-dialog[open] {
+    grid-template: auto auto minmax(0, 1fr) / minmax(0, 1fr);
+  }
+  .center-bar {
+    padding: max(9px, env(safe-area-inset-top)) max(14px, env(safe-area-inset-right)) 9px
+      max(14px, env(safe-area-inset-left));
+  }
+  .center-rail {
+    border: 0;
+    padding: 5px max(4px, env(safe-area-inset-right)) 5px max(4px, env(safe-area-inset-left));
+  }
+  .rail-scene {
+    background: linear-gradient(110deg, #20404d, #315e65);
+  }
+  #center-nav {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 1px;
+  }
+  #center-nav button {
+    flex-direction: column;
+    justify-content: center;
+    gap: 4px;
+    padding: 6px 0;
+    border-radius: 6px;
+    font-size: clamp(10px, 2.8vw, 13px);
+    line-height: 1.3;
+    text-align: center;
+  }
+  #center-nav .icon {
+    width: 17px;
+    height: 17px;
+  }
+  .center-rail .rail-exit {
+    display: none;
+  }
+  .account-content {
+    padding: 26px max(18px, env(safe-area-inset-right)) max(22px, env(safe-area-inset-bottom))
+      max(18px, env(safe-area-inset-left));
+  }
+  #account-heading {
+    margin-bottom: 19px;
+  }
+  .center-avatar {
+    width: 49px;
+    font-size: 26px;
+  }
+  .archive-pass {
+    gap: 14px;
+  }
+}
+@media (max-width: 355px) {
+  .header-inner .brand-lettering svg {
+    width: 82px;
+  }
+}
+@media (prefers-reduced-transparency: reduce) {
+  #account-dialog {
+    background: #e9f2ef;
+    backdrop-filter: none;
+  }
+}
+.nav-short,
+.guest-settings {
+  display: none;
+}
+#account-dialog[data-section-name='auth'] #center-nav {
+  display: none;
+}
+#account-dialog[data-section-name='auth'] .rail-scene {
+  background:
+    linear-gradient(to bottom, #15405042 0%, #1e444e18 40%, #153942b5),
+    url('../assets/images/street/plaza-portrait-compact.webp') 59% center / cover;
+}
+#account-dialog[data-section-name='auth'] .guest-settings {
+  display: flex;
+  position: relative;
+  align-items: center;
+  gap: 8px;
+  margin-top: auto;
+  padding: 11px 13px;
+  min-height: 44px;
+  color: #f4faf7;
+  background: #173f4ae6;
+  border: 1px solid #c1d8d285;
+  border-radius: 7px;
+  font:
+    500 14px/1.2 'DM Sans',
+    sans-serif;
+}
+.guest-settings .icon {
+  width: 17px;
+  height: 17px;
+}
+#account-body .button + .account-link {
+  margin-inline-start: 12px;
+}
+@media (max-width: 680px) {
+  #center-nav .nav-long {
+    display: none;
+  }
+  #center-nav .nav-short {
+    display: inline;
+  }
+  #account-dialog[data-section-name='auth'] .center-rail {
+    min-height: 60px;
+    align-items: flex-end;
+    padding: 7px 14px;
+  }
+  #account-dialog[data-section-name='auth'] .rail-scene {
+    background-position: center 64%;
+  }
+}
+
+.comparison-heading {
+  font: 400 26px/1.2 var(--serif);
+  margin: 24px 0 8px;
 }

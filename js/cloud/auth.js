@@ -21,8 +21,22 @@ export class CloudError extends Error {
     return this.status === 0 || this.status === 429 || this.status >= 500;
   }
 }
-async function request(path, body, bearer, method = 'POST') {
+async function request(path, body, bearer, method = 'POST', signal) {
+  signal?.throwIfAborted();
   if (!configured) throw new CloudError('Cloud sync has not been configured.', 400);
+  const controller = new AbortController();
+  const cancel = () => controller.abort();
+  const timeout = setTimeout(cancel, 12000);
+  signal?.addEventListener('abort', cancel, { once: true });
+  try {
+    return await send(path, body, bearer, method, controller.signal);
+  } finally {
+    clearTimeout(timeout);
+    signal?.removeEventListener('abort', cancel);
+    signal?.throwIfAborted();
+  }
+}
+async function send(path, body, bearer, method, signal) {
   let response;
   try {
     response = await fetch(endpoint + path, {
@@ -37,7 +51,7 @@ async function request(path, body, bearer, method = 'POST') {
       cache: 'no-store',
       redirect: 'error',
       referrerPolicy: 'no-referrer',
-      signal: AbortSignal.timeout(12000),
+      signal,
     });
   } catch {
     throw new CloudError('The cloud service could not be reached. Changes stay on this device.');
@@ -180,8 +194,16 @@ export function signOut(id) {
     return true;
   });
 }
-export function requestRecovery(email, token) {
-  return request('/auth/v1/recover', { email, ...challenge(token) });
+export async function requestRecovery(email, token) {
+  try {
+    await request('/auth/v1/recover', { email, ...challenge(token) });
+  } catch (error) {
+    if (error.status >= 500 || error.code === 'email_provider_disabled')
+      throw new Error(
+        'Password recovery email is unavailable. Contact the person who manages this journal.'
+      );
+    throw error;
+  }
 }
 export async function resetPassword(email, code, password, captcha) {
   const s = credentials(
@@ -221,13 +243,14 @@ async function access(owner, rejected) {
     return next.access;
   });
 }
-export async function rpc(owner, name, params) {
+export async function rpc(owner, name, params, signal) {
+  signal?.throwIfAborted();
   const token = await access(owner);
   try {
-    return await request('/rest/v1/rpc/' + name, params, token);
+    return await request('/rest/v1/rpc/' + name, params, token, 'POST', signal);
   } catch (error) {
     if (error.status !== 401) throw error;
-    return request('/rest/v1/rpc/' + name, params, await access(owner, token));
+    return request('/rest/v1/rpc/' + name, params, await access(owner, token), 'POST', signal);
   }
 }
 export async function updateDisplayName(id, value) {

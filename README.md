@@ -6,9 +6,9 @@ The journal opens onto a screening room overlooking the cinema street. Browse mo
 
 Use **Gallery** to browse by poster or **Compact** for a denser list. Search personal, catalog and original titles, then open **Filters** to narrow the current section. Views and filters work offline and stay on this device. [Discovery guide, screenshots and performance measurements](docs/phase-4a/)
 
-Choose **Account** next to the totals to sign in, manage your display name or reset your password. Your private library opens automatically. You can review and import guest titles later. Self-service registration is disabled by default. [Account guide, email templates and rollout settings](docs/phase-4a-1/)
+Choose **Account** next to the totals to sign in and open your private collection. In the Account Center you can edit your profile, choose the layout and sort order, and manage your password. Changes save automatically while the journal is open and connected. Guest titles stay on this device until you choose to import them. Self-service registration is disabled by default. [Account Center guide and screenshots](docs/phase-4a-2/) · [Email templates and rollout settings](docs/phase-4a-1/)
 
-Open **Data Vault** in the footer to download a full JSON backup, export CSV, compare an incoming file or recover a previous collection. A restore requires a separate download of the current collection and explicit confirmation. Keep the resulting backup file outside this browser. [Vault guide, screenshots and file specification](docs/phase-3a/) · [Private cloud setup, sync and screenshots](docs/phase-3b/)
+The **Data & backup** shortcut opens the same window. Download a complete JSON backup or preview a file before adding its titles. Advanced options include CSV and recovery history. Replacing a collection requires a download of the current archive and explicit confirmation. Keep your backup file outside this browser. [Backup file specification](docs/phase-3a/) · [Private cloud setup](docs/phase-3b/)
 
 ## What works
 

@@ -21,8 +21,12 @@ export function guestCount() {
 function ready() {
   requireSession(owner);
   const c = cacheAt(accountKey(owner));
-  if (!navigator.onLine || !c.lastSync || c.incoming || c.pending.length || c.flight)
-    throw new Error('Finish syncing this archive before importing guest titles.');
+  if (!navigator.onLine) throw new Error('Reconnect to transfer guest titles.');
+  if (c.incoming) throw new Error('Review the changes to your private collection first.');
+  if (!c.lastSync || c.pending.length || c.flight)
+    throw new Error(
+      'Your private collection is still saving. Try the transfer again when it’s up to date.'
+    );
   return c;
 }
 export function guestPreview() {
@@ -32,7 +36,7 @@ export function guestPreview() {
   const guest = readBackup(raw);
   if (guest.invalid)
     throw new Error(
-      'Some guest titles need recovery. Export the guest journal from Data Vault before importing.'
+      'Some guest titles need recovery. Download a backup from the guest journal before importing.'
     );
   const deleted = new Set(c.rows.filter((row) => !row.entry).map((row) => row.id));
   const report = inspectEntries(guest.entries.filter((entry) => !deleted.has(entry.id)));
@@ -50,9 +54,16 @@ async function importGuest(raw, cursor, preview, accepted, signal) {
       throw new Error('The private archive changed. Review it again from Account.');
   };
   check();
-  const pinned = await rpc(owner, 'ac_pull', { after_revision: cursor, pinned_head: cursor });
+  const pinned = await rpc(
+    owner,
+    'ac_pull',
+    { after_revision: cursor, pinned_head: cursor },
+    signal
+  );
   if (pinned?.status !== 'ok' || pinned.head !== cursor)
-    throw new Error('The private archive changed. Sync and review the guest titles again.');
+    throw new Error(
+      'The private archive changed. Wait for automatic saving, then review the guest titles again.'
+    );
   return navigator.locks.request(guestKey, { signal }, () =>
     applyImport(preview, 'merge', accepted, null, signal, check)
   );

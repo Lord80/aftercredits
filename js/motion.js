@@ -79,20 +79,28 @@ export function setupAtmosphere() {
     document.documentElement.toggleAttribute('data-still', paused || forced || document.hidden);
     control.disabled = forced;
     control.setAttribute('aria-pressed', String(!paused && !forced));
+    window.dispatchEvent(new Event('ambient-change'));
   }
-  control.onclick = () => {
-    paused = !paused;
+  function setEnabled(on) {
+    if (control.disabled) return;
+    paused = !on;
     try {
       localStorage.setItem('aftercredits.ambient-paused', paused ? '1' : '0');
     } catch {}
     sync();
-  };
+  }
+  control.onclick = () => setEnabled(paused);
   document.documentElement.setAttribute('data-atmosphere', '');
   control.hidden = false;
   sync();
   reduce.addEventListener('change', sync);
   slow.addEventListener('change', sync);
   document.addEventListener('visibilitychange', sync);
+  return {
+    setEnabled,
+    enabled: () => !control.disabled && !paused,
+    forced: () => control.disabled,
+  };
 }
 
 export function entrance() {

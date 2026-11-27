@@ -99,17 +99,9 @@ function updateVaultControl() {
   const due = reminderDue(backupStatus());
   const control = byId('vault-open');
   control.toggleAttribute('data-due', due);
-  control.setAttribute('aria-label', due ? 'Data Vault, backup reminder' : 'Data Vault');
+  control.setAttribute('aria-label', due ? 'Data & backup, backup reminder' : 'Data & backup');
 }
-async function openDataVault(tab, trigger, guest) {
-  try {
-    const { openVault } = await import('./vault.js');
-    openVault(() => refresh(), updateVaultControl, tab, trigger, guest);
-  } catch {
-    feedback('The Data Vault could not open. Try again.');
-  }
-}
-byId('vault-open').addEventListener('click', () => openDataVault('export'));
+byId('vault-open').onclick = () => openAccount('data', byId('vault-open'));
 function refresh(state = snapshot()) {
   updateVaultControl();
   // A storage read parses new objects. Keep equal snapshots referentially stable for the strip and stage.
@@ -136,6 +128,7 @@ function refresh(state = snapshot()) {
   statistic(byId('average'), mean, (n) => (n === null ? '—' : n.toFixed(1)));
   byId('movie-count').textContent = groups.movie.length;
   byId('tv-count').textContent = groups.tv.length;
+  window.dispatchEvent(new Event('archive-updated'));
   render();
 }
 
@@ -358,12 +351,7 @@ document.addEventListener('click', (event) => {
     page = 0;
     render();
   }
-  if (button.dataset.layout && prefs.layout !== button.dataset.layout) {
-    prefs.layout = button.dataset.layout;
-    page = 0;
-    persistPreferences(prefs);
-    render();
-  }
+  if (button.dataset.layout) setLayout(button.dataset.layout);
   if (button.hasAttribute('data-add')) openPanel('add', null, button);
   if (button.hasAttribute('data-dismiss')) dismiss(button.closest('dialog'));
   if (button.hasAttribute('data-clear')) {
@@ -413,12 +401,20 @@ query.addEventListener('input', () => {
   cancelAnimationFrame(renderFrame);
   renderFrame = requestAnimationFrame(render);
 });
-order.addEventListener('change', () => {
-  prefs[section] = { ...prefs[section], sort: order.value };
+function setLayout(layout) {
+  if (prefs.layout === layout) return;
+  prefs.layout = layout;
   page = 0;
   persistPreferences(prefs);
   render();
-});
+}
+function setSort(type, sort) {
+  prefs[type] = { ...prefs[type], sort };
+  page = 0;
+  persistPreferences(prefs);
+  render();
+}
+order.addEventListener('change', () => setSort(section, order.value));
 window.addEventListener('storage', (event) => {
   if (event.key === STATUS_KEY) updateVaultControl();
   if (event.key === STORAGE_KEY || event.key === LEGACY_KEY || event.key === null) refresh();
@@ -452,7 +448,7 @@ document.querySelector('.projector').addEventListener('keydown', (event) => {
   event.preventDefault();
   stepFrame(event.key === 'ArrowLeft' ? -1 : 1);
 });
-setupAtmosphere();
+const ambient = setupAtmosphere();
 refresh(await initialize());
 entrance();
 
@@ -463,17 +459,28 @@ function accountLabel() {
   accountButton.querySelector('span').textContent = name || 'Account';
   accountButton.setAttribute('aria-label', name ? 'Account, ' + name : 'Account');
 }
-async function openAccount() {
-  if (!configured) return openDataVault('cloud', accountButton);
+async function openAccount(
+  section = owner || !configured ? 'overview' : 'auth',
+  trigger = accountButton
+) {
   try {
     const panel = await import('./cloud/panel.js');
-    panel.openAccount(openDataVault);
+    await panel.openAccount(section, trigger, {
+      refresh,
+      updateVaultControl,
+      ambient,
+      prefs,
+      setLayout,
+      setSort,
+      counts: () => ({ movie: groups.movie.length, tv: groups.tv.length }),
+      storageNotice: () => byId('storage-note').textContent,
+    });
   } catch {
-    feedback('Account could not open. Try again.');
+    feedback('Account Center could not open. Try again.');
   }
 }
 accountLabel();
-accountButton.onclick = openAccount;
+accountButton.onclick = () => openAccount();
 window.addEventListener('account-profile', accountLabel);
 window.addEventListener('storage', (e) => {
   if (e.key === sessionKey) accountLabel();
@@ -535,5 +542,5 @@ if (unfinishedConnection) {
   import('./cloud/auth.js')
     .then((auth) => auth.resumeConnection(unfinishedConnection))
     .then(reloadScope)
-    .catch(openAccount);
+    .catch(() => openAccount());
 }
