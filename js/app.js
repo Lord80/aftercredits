@@ -1,4 +1,4 @@
-import { owner, configured, reloadScope } from './cloud/scope.js';
+import { owner, configured, reloadScope, session, sessionKey } from './cloud/scope.js';
 import { changeMovie, snapshot, STORAGE_KEY, initialize, LEGACY_KEY } from './collection.js';
 import {
   entrance,
@@ -101,10 +101,10 @@ function updateVaultControl() {
   control.toggleAttribute('data-due', due);
   control.setAttribute('aria-label', due ? 'Data Vault, backup reminder' : 'Data Vault');
 }
-async function openDataVault(tab) {
+async function openDataVault(tab, trigger, guest) {
   try {
     const { openVault } = await import('./vault.js');
-    openVault(() => refresh(), updateVaultControl, tab);
+    openVault(() => refresh(), updateVaultControl, tab, trigger, guest);
   } catch {
     feedback('The Data Vault could not open. Try again.');
   }
@@ -456,6 +456,29 @@ setupAtmosphere();
 refresh(await initialize());
 entrance();
 
+const accountButton = byId('account-open');
+function accountLabel() {
+  const s = session();
+  const name = owner && s?.id === owner && s.displayName;
+  accountButton.querySelector('span').textContent = name || 'Account';
+  accountButton.setAttribute('aria-label', name ? 'Account, ' + name : 'Account');
+}
+async function openAccount() {
+  if (!configured) return openDataVault('cloud', accountButton);
+  try {
+    const panel = await import('./cloud/panel.js');
+    panel.openAccount(openDataVault);
+  } catch {
+    feedback('Account could not open. Try again.');
+  }
+}
+accountLabel();
+accountButton.onclick = openAccount;
+window.addEventListener('account-profile', accountLabel);
+window.addEventListener('storage', (e) => {
+  if (e.key === sessionKey) accountLabel();
+});
+
 if (configured) {
   window.addEventListener('cloud-session-ended', () => {
     try {
@@ -468,12 +491,49 @@ if (configured) {
   if (owner) import('./cloud/local.js').then((module) => module.prepareOfflineShell());
   if (owner)
     import('./cloud/sync.js')
-      .then((module) => module.startSync())
+      .then((module) => {
+        const attention = () => {
+          try {
+            const { state, last } = module.syncStatus();
+            const note = byId('first-sync');
+            const copy = last
+              ? ''
+              : state === 'Offline' || state === 'Error'
+                ? 'This device still needs to download your private archive. Open Account to check sync.'
+                : 'Opening your private collection…';
+            if (note.textContent !== copy) note.textContent = copy;
+            note.hidden = !copy;
+            const needsReview = state === 'Conflict' || state === 'Error';
+            accountButton.toggleAttribute('data-attention', needsReview);
+            accountButton.title = needsReview ? 'Account · sync needs attention' : 'Account';
+            if (needsReview) accountButton.setAttribute('aria-label', accountButton.title);
+            else accountLabel();
+          } catch {
+            accountButton.title = 'Account · check local storage';
+          }
+        };
+        window.addEventListener('cloud-state', attention);
+        attention();
+        module.startSync();
+      })
       .catch(() => feedback('Cloud sync is unavailable. Your archive is kept locally.'));
   try {
+    if (owner && sessionStorage.getItem('aftercredits.guest-tip') === owner) {
+      sessionStorage.removeItem('aftercredits.guest-tip');
+      feedback('Your archive is open. Guest titles can be imported from Account.');
+    }
     if (sessionStorage.getItem('aftercredits.open-account')) {
       sessionStorage.removeItem('aftercredits.open-account');
-      openDataVault('cloud');
+      openAccount();
     }
   } catch {}
+}
+
+// Complete a first connection that was left open in an earlier release without importing guest data.
+const unfinishedConnection = configured && !owner && session()?.id;
+if (unfinishedConnection) {
+  import('./cloud/auth.js')
+    .then((auth) => auth.resumeConnection(unfinishedConnection))
+    .then(reloadScope)
+    .catch(openAccount);
 }

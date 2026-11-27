@@ -1,9 +1,19 @@
 // The module worker also updates when the public project configuration changes.
+import { allowRegistration, turnstileSiteKey } from './js/account-config.js';
 import { projectUrl, publishableKey } from './js/cloud-config.js';
 // Public app files only. Scope-qualified cache names also isolate other Pages projects on this origin.
 const scope = self.registration.scope;
 const cachePrefix = 'aftercredits-shell:' + scope + ':';
-const cacheName = cachePrefix + '4a.1:' + projectUrl + ':' + publishableKey;
+const cacheName =
+  cachePrefix +
+  '4a.1-accounts.1:' +
+  projectUrl +
+  ':' +
+  publishableKey +
+  ':' +
+  allowRegistration +
+  ':' +
+  turnstileSiteKey;
 const paths = [
   './',
   './index.html',
@@ -13,8 +23,11 @@ const paths = [
   './css/dialogs.css',
   './css/vault.css',
   './css/discovery.css',
+  './css/account.css',
   ...[
     'app',
+    'account-config',
+    'download',
     'backup',
     'catalog',
     'cloud-config',
@@ -35,6 +48,9 @@ const paths = [
     'vault-store',
     'views',
     'cloud/auth',
+    'cloud/account-forms',
+    'cloud/captcha',
+    'cloud/guest-import',
     'cloud/cache',
     'cloud/local',
     'cloud/panel',

@@ -118,13 +118,21 @@ export async function exportCurrent(generate, expected, recovery = false, signal
   return { receipt, recorded, sessionOnly: Boolean(notice) };
 }
 
-export function applyImport(preview, mode, accepted = new Set(), receipt = null, signal) {
+export function applyImport(
+  preview,
+  mode,
+  accepted = new Set(),
+  receipt = null,
+  signal,
+  checkSource
+) {
   if (!navigator.locks)
     throw new Error(
       'Safe imports require a browser with Web Locks. Open the HTTPS site in a current browser.'
     );
   return withLock(
     () => {
+      checkSource?.();
       if (mode !== 'merge' && mode !== 'restore') throw new Error('Unknown import mode.');
       const { items, notice } = snapshot();
       if (notice)

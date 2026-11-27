@@ -1,3 +1,5 @@
+import { allowRegistration } from '../account-config.js';
+import { blank } from './cache.js';
 import { publishableKey } from '../cloud-config.js';
 import {
   accountKey,
@@ -41,15 +43,30 @@ async function request(path, body, bearer, method = 'POST') {
     throw new CloudError('The cloud service could not be reached. Changes stay on this device.');
   }
   if (!response.ok) {
-    const message =
-      response.status === 429
+    const code = await response
+      .json()
+      .then((data) => data?.error_code)
+      .catch(() => '');
+    const known = {
+      email_not_confirmed: 'Verify your email before signing in.',
+      invalid_credentials: 'Check your email and password and try again.',
+      otp_expired: 'This code has expired or is incorrect. Request another code.',
+      weak_password: 'Choose a longer, less common password.',
+      signup_disabled: 'New accounts are currently available by invitation.',
+      captcha_failed: 'Complete the verification again and retry.',
+    };
+    const message = Object.hasOwn(known, code)
+      ? known[code]
+      : response.status === 429
         ? 'Too many requests. Try again shortly.'
         : response.status >= 500
           ? 'The cloud service is temporarily unavailable.'
           : path.startsWith('/rest/')
             ? 'The cloud rejected the change. Check the migration and the entry data.'
-            : 'The account request was declined. Check the email, password or recovery code.';
-    throw new CloudError(message, response.status);
+            : 'The account request was declined. Check the email, password or email code.';
+    const error = new CloudError(message, response.status);
+    error.code = code;
+    throw error;
   }
   try {
     const text = await response.text();
@@ -73,41 +90,108 @@ function credentials(raw) {
   return {
     id: raw.user.id,
     email: raw.user.email,
+    displayName: profileName(raw.user),
     access: raw.access_token,
     refresh: raw.refresh_token,
     expires: Date.now() + raw.expires_in * 1000,
   };
 }
-export async function signIn(email, password) {
+function profileName(user) {
+  const metadata = user?.user_metadata;
+  const name = metadata?.display_name || metadata?.full_name;
+  return typeof name === 'string' ? name.trim().slice(0, 80) : '';
+}
+const challenge = (token) => (token ? { gotrue_meta_security: { captcha_token: token } } : {});
+function requireSignup() {
+  if (allowRegistration !== true)
+    throw new Error('New accounts are currently available by invitation.');
+}
+// The auth lock serializes identity changes. A cache is initialized once, before publishing its owner.
+async function openArchive(s) {
+  if (!navigator.locks) throw new Error('Opening a private archive requires HTTPS and Web Locks.');
+  const key = accountKey(s.id);
+  await navigator.locks.request(key, () => {
+    try {
+      if (localStorage.getItem(key) === null) localStorage.setItem(key, JSON.stringify(blank()));
+      localStorage.setItem(sessionKey, JSON.stringify({ ...s, linked: true }));
+    } catch {
+      throw new Error(
+        'This browser could not save the private archive. Allow site storage or free up space and try again.'
+      );
+    }
+  });
+  return s.id;
+}
+function authenticate(getSession) {
   return authLock(async () => {
     if (session()) throw new Error('Sign out before switching accounts.');
-    const s = credentials(await request('/auth/v1/token?grant_type=password', { email, password }));
-    s.linked = localStorage.getItem(accountKey(s.id)) !== null;
-    localStorage.setItem(sessionKey, JSON.stringify(s));
-    return s;
+    const s = credentials(await getSession());
+    try {
+      return await openArchive(s);
+    } catch (error) {
+      await request('/auth/v1/logout?scope=local', undefined, s.access).catch(() => {});
+      throw error;
+    }
   });
 }
-export function signOut() {
+export function signIn(email, password, token) {
+  return authenticate(() =>
+    request('/auth/v1/token?grant_type=password', { email, password, ...challenge(token) })
+  );
+}
+export async function signUp(email, password, displayName, token) {
+  requireSignup();
+  // Always verify through the email-code screen. Do not persist a signup response as a session.
+  const reply = await request('/auth/v1/signup', {
+    email,
+    password,
+    data: { display_name: displayName.trim().slice(0, 80) },
+    ...challenge(token),
+  });
+  if (reply?.access_token) {
+    await request('/auth/v1/logout?scope=local', undefined, reply.access_token).catch(() => {});
+    throw new Error(
+      'Email confirmation is unavailable. Ask the journal administrator to enable it.'
+    );
+  }
+}
+export function verifySignup(email, code, captcha) {
+  return authenticate(() =>
+    request('/auth/v1/verify', { email, token: code, type: 'signup', ...challenge(captcha) })
+  );
+}
+export function resendVerification(email, token) {
+  return request('/auth/v1/resend', { type: 'signup', email, ...challenge(token) });
+}
+export function resumeConnection(id) {
+  return authLock(() => openArchive(requireSession(id)));
+}
+export function signOut(id) {
   return authLock(async () => {
-    const s = session();
+    const s = requireSession(id);
     localStorage.removeItem(sessionKey);
     // Remove local access immediately, including in other tabs. Offline revocation is best effort.
-    if (s) {
-      if (!navigator.onLine) return false;
-      try {
-        await request('/auth/v1/logout?scope=local', undefined, s.access);
-      } catch {
-        return false;
-      }
+    if (!navigator.onLine) return false;
+    try {
+      await request('/auth/v1/logout?scope=local', undefined, s.access);
+    } catch {
+      return false;
     }
     return true;
   });
 }
-export function requestRecovery(email) {
-  return request('/auth/v1/recover', { email });
+export function requestRecovery(email, token) {
+  return request('/auth/v1/recover', { email, ...challenge(token) });
 }
-export async function resetPassword(email, code, password) {
-  const s = credentials(await request('/auth/v1/verify', { email, token: code, type: 'recovery' }));
+export async function resetPassword(email, code, password, captcha) {
+  const s = credentials(
+    await request('/auth/v1/verify', {
+      email,
+      token: code,
+      type: 'recovery',
+      ...challenge(captcha),
+    })
+  );
   try {
     await request('/auth/v1/user', { password }, s.access, 'PUT');
   } finally {
@@ -146,9 +230,17 @@ export async function rpc(owner, name, params) {
     return request('/rest/v1/rpc/' + name, params, await access(owner, token));
   }
 }
-export function activateSession(id) {
-  return authLock(() => {
+export async function updateDisplayName(id, value) {
+  const name = value.trim();
+  if (!name || name.length > 80) throw new Error('Enter a display name of up to 80 characters.');
+  await access(id);
+  return authLock(async () => {
     const s = requireSession(id);
-    localStorage.setItem(sessionKey, JSON.stringify({ ...s, linked: true }));
+    const user = await request('/auth/v1/user', { data: { display_name: name } }, s.access, 'PUT');
+    if (user?.id !== id) throw new Error('The account changed. Open Settings again.');
+    localStorage.setItem(
+      sessionKey,
+      JSON.stringify({ ...requireSession(id), displayName: profileName(user) })
+    );
   });
 }

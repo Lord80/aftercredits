@@ -28,6 +28,7 @@
     <link rel="stylesheet" href="./css/dialogs.css" />
     <link rel="stylesheet" href="./css/vault.css" />
     <link rel="stylesheet" href="./css/discovery.css" />
+    <link rel="stylesheet" href="./css/account.css" />
     <link rel="modulepreload" href="./js/motion.js" />
     <link rel="modulepreload" href="./js/views.js" />
     <script type="module" src="./js/app.js"></script>
@@ -72,6 +73,7 @@
         <rect x="2" y="4" width="20" height="13" rx="2" />
         <path d="M8 21h8m-4-4v4" />
       </symbol>
+      <symbol id="person" viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.5" /><path d="M4.8 20c.4-4.4 3-6.7 7.2-6.7s6.8 2.3 7.2 6.7" /></symbol>
       <symbol id="layout-grid" viewBox="0 0 24 24">
         <rect x="3" y="3" width="7" height="8" rx="1" />
         <rect x="14" y="3" width="7" height="8" rx="1" />
@@ -136,6 +138,10 @@
             <span>Avg. rating</span>
           </div>
         </div>
+        <button type="button" id="account-open" aria-haspopup="dialog" aria-controls="account-dialog" aria-label="Account" title="Account">
+          <svg class="icon" aria-hidden="true"><use href="#person" /></svg>
+          <span>Account</span>
+        </button>
         <nav class="dock pane glass-rail" aria-label="Journal navigation">
           <a href="#collection" aria-label="Journal collection"
             ><svg class="icon"><use href="#journal" /></svg><span>Journal</span></a
@@ -303,6 +309,7 @@
           </nav>
         </div>
         <div class="gallery">
+          <p class="notice" id="first-sync" role="status" hidden></p>
           <p class="notice" id="storage-note" role="status" hidden></p>
           <div id="results"></div>
 
@@ -602,6 +609,17 @@
           </div>
         </div>
       </article>
+    </dialog>
+    <dialog id="account-dialog" class="pane glass-sheet" aria-labelledby="account-heading">
+      <div class="account-cover">
+        <svg class="account-splice" aria-hidden="true" viewBox="0 0 54 56"><use href="./assets/brand/aftercredits.svg#upper-frame" /><use href="./assets/brand/aftercredits.svg#lower-frame" /></svg>
+        <button type="button" class="close-button" id="account-close" aria-label="Close account"><svg class="icon" aria-hidden="true"><use href="#x" /></svg></button>
+      </div>
+      <div class="account-content">
+        <h2 id="account-heading" tabindex="-1">Account</h2>
+        <div id="account-body"></div>
+        <p class="cloud-message" id="account-message" role="status" aria-live="polite" aria-atomic="true"></p>
+      </div>
     </dialog>
     <dialog id="vault" class="pane glass-sheet" aria-labelledby="vault-title">
       <template id="vault-content">
