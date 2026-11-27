@@ -45,11 +45,18 @@ def upload(page, data):
 
 def enter(page):
     page.locator("#vault-open").press("Enter")
-    expect(page.locator("#vault-close")).to_be_focused()
+    expect(page.locator("#vault-json")).to_be_visible()
+    expect(page.locator("#account-heading")).to_be_focused()
 
 
 def tab(page, name):
-    page.locator(f'[data-vault-tab="{name}"]').click()
+    if name == "overview":
+        page.locator("[data-center=overview]").click()
+        return
+    if not page.locator("#vault").is_visible():
+        page.locator("[data-center=data]").click()
+    if name == "advanced" and not page.locator("#vault-advanced").evaluate("e=>e.open"):
+        page.locator("#vault-advanced > summary").click()
 
 
 def download(page, selector):
@@ -77,12 +84,12 @@ def check_portability(browser):
     errors = []
     page.on("pageerror", lambda err: errors.append(str(err)))
     enter(page)
-    expect(page.locator("#vault-movies")).to_have_text("2")
-    expect(page.locator("#vault-series")).to_have_text("1")
-    tab(page, "cloud")
-    expect(page.locator("#vault-cloud")).to_contain_text("local to this browser")
+    tab(page,"overview")
+    expect(page.locator("#center-movie")).to_have_text("2")
+    expect(page.locator("#center-tv")).to_have_text("1")
+    expect(page.locator(".cloud-issue")).to_contain_text("local to this browser")
     assert page.evaluate("performance.getEntriesByType('resource').every(r=>!r.name.endsWith('/cloud/auth.js') && !r.name.includes('.supabase.co/'))")
-    tab(page, "export")
+    tab(page, "advanced")
     name, backup = download(page, "#vault-json")
     assert name.startswith("aftercredits-backup-")
     assert json.loads(backup)["collection"]["entries"] == initial
@@ -107,7 +114,7 @@ def check_portability(browser):
     page.locator("#vault-cancel").click()
     upload(page, raw([series, file_version, new_title]))
     expect(page.locator("#vault-preview-title")).to_be_focused()
-    assert page.locator("#vault-summary dd").all_text_contents() == ["3", "2", "1", "1", "1", "1", "0"]
+    assert page.locator("#vault-summary dd").all_text_contents() == ["3", "1", "1", "1"]
     page.locator("#vault-cancel").click()
     assert stored(page) == before and stored(page, HISTORY) is None
     upload(page, raw([series,file_version,new_title]))
@@ -124,6 +131,7 @@ def check_portability(browser):
     expect(page.locator("#vault-preview")).to_be_hidden()
     assert json.loads(stored(page))["entries"][1] == dict(file_version, id=movie["id"])
     upload(page, raw([]))
+    page.locator("#vault-replace summary").click()
     page.locator('[name="vault-mode"][value="restore"]').check()
     expect(page.locator("#vault-apply")).to_be_disabled()
     _, protective = download(page, "#vault-copy")
@@ -133,7 +141,7 @@ def check_portability(browser):
     page.locator("#vault-apply").click()
     expect(page.locator("#vault-preview")).to_be_hidden()
     assert json.loads(stored(page))["entries"] == []
-    tab(page, "recovery")
+    tab(page, "advanced")
     assert page.locator("#vault-history button").count() == 3
     page.locator("#vault-history button").last.click()
     expect(page.locator("#vault-preview-title")).to_have_text("Recovery preview")
@@ -149,12 +157,12 @@ def check_portability(browser):
     assert json.loads(stored(page))["entries"] == initial and not errors, errors
     page.evaluate("localStorage.setItem('aftercredits.vault.status.v1',JSON.stringify({changes:5, dismissedAt:0, exportedAt:null}))")
     page.reload()
-    expect(page.locator("#vault-open")).to_have_accessible_name("Data Vault, backup reminder")
+    expect(page.locator("#vault-open")).to_have_accessible_name("Data & backup, backup reminder")
     enter(page)
-    tab(page, "recovery")
+    tab(page, "advanced")
     page.locator("#vault-dismiss").click()
     expect(page.locator("#vault-reminder")).to_be_hidden()
-    expect(page.locator('[data-vault-tab="recovery"]')).to_be_focused()
+    expect(page.locator("#vault-json")).to_be_focused()
     assert json.loads(stored(page))["entries"] == initial
     ctx.close()
 
@@ -188,18 +196,19 @@ def check_tabs(browser):
     expect(owner.locator("#total")).to_have_text("05")
     assert json.loads(stored(owner))["entries"][-3:] == initial
     # Cancel a confirmed import that is still waiting for a lock.
-    upload(importer, raw([record("cancelled","Cancelled save")]))
-    owner.evaluate("""key=>{window.held=false;navigator.locks.request(key, async()=>{
-      window.held=true;await new Promise(r=>window.release=r)
-    })}""", KEY)
-    owner.wait_for_function("window.held")
-    before = stored(owner)
-    importer.locator("#vault-apply").click()
-    owner.wait_for_function("navigator.locks.query().then(q=>q.pending.length===1)")
-    importer.locator("#vault-cancel").click()
-    owner.evaluate("window.release()")
-    owner.wait_for_function("navigator.locks.query().then(q=>!q.held.length&&!q.pending.length)")
-    assert stored(owner) == before
+    for cancel in ["#vault-cancel", "[data-center=preferences]"]:
+        upload(importer, raw([record("cancelled","Cancelled save")]))
+        owner.evaluate("""key=>{window.held=false;navigator.locks.request(key, async()=>{
+          window.held=true;await new Promise(r=>window.release=r)
+        })}""", KEY)
+        owner.wait_for_function("window.held")
+        before = stored(owner)
+        importer.locator("#vault-apply").click()
+        owner.wait_for_function("navigator.locks.query().then(q=>q.pending.length===1)")
+        importer.locator(cancel).click()
+        owner.evaluate("window.release()")
+        owner.wait_for_function("navigator.locks.query().then(q=>!q.held.length&&!q.pending.length)")
+        assert stored(owner) == before
     ctx.close()
 
 
@@ -220,7 +229,7 @@ def check_storage(browser):
     page=ctx.new_page()
     page.goto(URL)
     enter(page)
-    expect(page.locator("#vault-local")).to_contain_text("Session only")
+    expect(page.locator(".cloud-issue")).to_contain_text("Changes will last for this tab session")
     tab(page,"import")
     upload(page,raw([new_title]))
     expect(page.locator("#vault-errors")).to_contain_text("unavailable")

@@ -1,4 +1,4 @@
-import { allowRegistration } from '../account-config.js';
+import * as options from '../account-config.js';
 import { mountChallenge } from './captcha.js';
 import {
   signIn,
@@ -58,7 +58,7 @@ const pages = {
   ],
   recover: [
     'Forgot password?',
-    'We’ll email a code so you can choose a new password.',
+    'Request a recovery code for your email address. If it doesn’t arrive, check your junk folder or contact your host.',
     'Send recovery code',
     'Sending code…',
   ],
@@ -74,6 +74,21 @@ export function authScreen(ui, mode = 'signin', address = '') {
   const [title, description, label, progress] = pages[mode];
   const { body, el, page, action, run, message, authenticated } = ui;
   page(title);
+  if (mode === 'recover' && options.recoveryEmailEnabled === false) {
+    body.append(
+      el(
+        'p',
+        'Recovery email is unavailable. Contact the person who manages this journal for help with your password.'
+      )
+    );
+    action(
+      body,
+      ui.security ? 'Back to security' : 'Back to sign in',
+      ui.security || (() => authScreen(ui)),
+      'account-link'
+    );
+    return;
+  }
   body.append(el('p', description));
   const form = el('form');
   form.className = 'cloud-form';
@@ -86,6 +101,7 @@ export function authScreen(ui, mode = 'signin', address = '') {
   }
   const email = field(form, 'Email', 'email', 'email', address);
   email.maxLength = 254;
+  if (ui.security) email.readOnly = true;
   email.autocapitalize = 'none';
   email.spellcheck = false;
   if (mode === 'verify' || mode === 'reset') {
@@ -123,8 +139,9 @@ export function authScreen(ui, mode = 'signin', address = '') {
     action(links, text, () => authScreen(ui, to, email.value.trim()), 'account-link');
   if (mode === 'signin') {
     follow('Forgot password?', 'recover');
-    if (allowRegistration === true) follow('Create account', 'signup');
-  } else follow('Back to sign in', 'signin');
+    if (options.allowRegistration === true) follow('Create account', 'signup');
+  } else if (ui.security) action(links, 'Back to security', ui.security, 'account-link');
+  else follow('Back to sign in', 'signin');
 
   const sendAgain = mode === 'verify' || mode === 'reset';
   if (sendAgain)
@@ -177,8 +194,13 @@ export function authScreen(ui, mode = 'signin', address = '') {
           message('If this account exists, check your email for the recovery code.');
         } else {
           await resetPassword(to, code.value, password.value, token);
-          authScreen(ui, 'signin', to);
-          message('Password updated. Sign in to continue.');
+          if (ui.security) {
+            ui.security();
+            message('Password updated.');
+          } else {
+            authScreen(ui, 'signin', to);
+            message('Password updated. Sign in to continue.');
+          }
         }
       } catch (error) {
         if (error.code === 'email_not_confirmed') {

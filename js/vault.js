@@ -1,4 +1,4 @@
-import { configured, owner, session } from './cloud/scope.js';
+import { owner } from './cloud/scope.js';
 import { snapshot, STORAGE_KEY, LEGACY_KEY, withLock } from './collection.js';
 import { MAX_BYTES } from './validation.js';
 import { download } from './download.js';
@@ -12,19 +12,17 @@ import {
   review,
 } from './vault-store.js';
 import { backupStatus, dismissReminder, reminderDue, STATUS_KEY } from './vault-status.js';
-import { hideDialog, showDialog } from './motion.js';
 
 const byId = (id) => document.getElementById('vault-' + id);
 const dialog = document.getElementById('vault');
 const content = byId('content');
 content.replaceWith(content.content);
-const tabs = [...dialog.querySelectorAll('[data-vault-tab]')];
+
 const date = new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' });
 let refreshRoom, updateControl, preview, recoveryReceipt, source, mode, tab, history;
-let guestReview, returnFocus;
+let guestReview;
 let operation,
   generation = 0,
-  closing = false,
   conflictsShown = 0;
 const accepted = new Set();
 const node = (tag, value) => {
@@ -40,35 +38,21 @@ function message(copy = '', error = false) {
 
 function overview() {
   const { items, notice } = snapshot();
-  byId('movies').textContent = items.filter((item) => item.mediaType === 'movie').length;
-  byId('series').textContent = items.filter((item) => item.mediaType === 'tv').length;
-  byId('local').textContent = notice
-    ? owner
-      ? 'Storage protected'
-      : 'Session only'
-    : items.length
-      ? 'Saved locally'
-      : 'Empty collection';
-  if (notice) byId('local').textContent += ' · ' + notice;
-  byId('json').textContent = notice ? 'Download readable titles' : 'Download JSON backup';
+  byId('local').textContent =
+    notice || (items.length ? 'Saved on this device' : 'Empty collection');
+  byId('json').querySelector('strong').textContent = notice
+    ? 'Download readable titles'
+    : 'Download a backup';
   const status = backupStatus();
   byId('last').textContent = status.exportedAt
     ? date.format(new Date(status.exportedAt))
     : 'None recorded';
-  byId('cloud-note').textContent = owner
-    ? 'Account archive · ' + (session()?.email || 'signed in')
-    : configured
-      ? 'Guest archive · local only.'
-      : 'Cloud sync is not configured.';
   byId('reminder').hidden = !reminderDue(status);
   try {
     history = checkpoints();
   } catch {
     history = null;
   }
-  byId('history-count').textContent = history
-    ? history.length + (history.length === 1 ? ' snapshot' : ' snapshots')
-    : 'Unavailable';
   updateControl();
 }
 
@@ -80,6 +64,8 @@ function cancelPreview() {
   guestReview = null;
   recoveryReceipt = null;
   accepted.clear();
+  byId('actions').hidden = false;
+  byId('advanced').hidden = false;
   byId('file').value = '';
   byId('preview').hidden = true;
   byId('conflicts').replaceChildren();
@@ -102,6 +88,7 @@ function drawHistory() {
     button.className = 'button secondary';
     button.addEventListener('click', () => {
       try {
+        tab = 'recovery';
         startReview(recoveryReport(copy), 'Snapshot from ' + date.format(new Date(copy.at)));
       } catch (err) {
         message(err.message, true);
@@ -111,50 +98,13 @@ function drawHistory() {
   }
 }
 
-function openTab(name) {
+function resetView() {
   cancelPreview();
-  tab = name;
-  for (const button of tabs) {
-    const selected = button.dataset.vaultTab === tab;
-    button.setAttribute('aria-pressed', String(selected));
-    byId(button.dataset.vaultTab).hidden = !selected;
-  }
+  tab = 'import';
   message();
   overview();
-  if (tab === 'recovery') drawHistory();
-  if (tab === 'cloud') openCloud();
+  drawHistory();
 }
-function openCloud() {
-  const area = byId('cloud');
-  if (!configured) {
-    area.replaceChildren(
-      node('h3', 'Cloud sync'),
-      node(
-        'p',
-        'This journal is local to this browser. To enable private account sync, connect a Supabase project using the setup guide.'
-      )
-    );
-    const guide = node('a', 'Cloud setup guide');
-    guide.href = 'https://github.com/Lord80/aftercredits/blob/main/docs/phase-3b/README.md';
-    guide.className = 'text-button';
-    area.append(guide);
-    return;
-  }
-  const link = node('button', owner ? 'Open account' : 'Sign in');
-  link.type = 'button';
-  link.className = 'button primary';
-  link.onclick = async () => {
-    await close();
-    document.getElementById('account-open').click();
-  };
-  area.replaceChildren(node('h3', 'Your account'), link);
-}
-tabs.forEach((button) =>
-  button.addEventListener('click', () => {
-    if (tab !== button.dataset.vaultTab) openTab(button.dataset.vaultTab);
-  })
-);
-
 byId('json').addEventListener('click', async () => {
   const ticket = generation;
   operation?.abort();
@@ -189,7 +139,7 @@ byId('csv').addEventListener('click', () => {
 byId('dismiss').addEventListener('click', async () => {
   try {
     await withLock(dismissReminder);
-    tabs.find((button) => button.dataset.vaultTab === tab).focus();
+    byId('json').focus();
     overview();
     message('Reminder dismissed.');
   } catch {
@@ -310,6 +260,9 @@ function setMode(next) {
 for (const radio of dialog.querySelectorAll('[name="vault-mode"]')) {
   radio.addEventListener('change', () => setMode(radio.value));
 }
+byId('replace').addEventListener('toggle', () => {
+  if (!byId('replace').open && preview && tab === 'import' && mode === 'restore') setMode('merge');
+});
 byId('consent').addEventListener('change', enabled);
 
 function startReview(report, name, guest = null) {
@@ -319,6 +272,7 @@ function startReview(report, name, guest = null) {
   source = name;
   preview = review(report);
   const { plan, notice } = preview;
+  byId('actions').hidden = byId('advanced').hidden = true;
   byId('preview').hidden = false;
   byId('preview-title').textContent = guestReview
     ? 'Review guest titles'
@@ -329,13 +283,12 @@ function startReview(report, name, guest = null) {
   const summary = byId('summary');
   summary.replaceChildren();
   for (const [label, value] of Object.entries({
-    Total: report.total,
-    Movies: report.movies,
-    Series: report.series,
+    [guestReview ? 'Guest titles' : tab === 'recovery' ? 'In saved copy' : 'In backup']:
+      report.total,
     New: plan.added,
-    Duplicates: plan.duplicates,
-    Conflicts: plan.conflicts.length,
-    Invalid: report.invalid,
+    'Already saved': plan.duplicates,
+    ...(plan.conflicts.length ? { 'Different versions': plan.conflicts.length } : {}),
+    ...(report.invalid ? { Invalid: report.invalid } : {}),
   })) {
     const group = node('div');
     group.append(node('dt', label), node('dd', value));
@@ -348,11 +301,13 @@ function startReview(report, name, guest = null) {
   byId('errors').replaceChildren(...errors.map((err) => node('p', err)));
   byId('errors').hidden = !errors.length;
   byId('options').hidden = !!errors.length;
-  dialog.querySelector('.vault-modes').hidden = tab === 'recovery' || Boolean(guestReview);
+  byId('replace').open = false;
+  byId('replace').hidden = tab === 'recovery' || Boolean(guestReview);
   setMode(tab === 'recovery' ? 'restore' : 'merge');
   byId('preview-title').focus();
 }
 byId('file').addEventListener('change', async (event) => {
+  tab = 'import';
   const file = event.target.files[0];
   if (!file) return;
   cancelPreview();
@@ -403,14 +358,14 @@ byId('apply').addEventListener('click', async () => {
       ? await guestReview.apply(preview, new Set(accepted), operation.signal)
       : await applyImport(preview, mode, new Set(accepted), recoveryReceipt, operation.signal);
     if (ticket !== generation) return;
-    openTab(tab);
+    resetView();
     refreshRoom();
     message(
       changed
-        ? 'Collection saved locally. A pre-import snapshot is available in Recovery.'
+        ? 'Collection saved locally. Your previous collection is in recovery history.'
         : 'Your collection already matches this backup.'
     );
-    tabs.find((button) => button.dataset.vaultTab === tab).focus();
+    byId('json').focus();
   } catch (err) {
     if (ticket === generation) {
       enabled();
@@ -421,38 +376,12 @@ byId('apply').addEventListener('click', async () => {
   }
 });
 byId('cancel').addEventListener('click', () => {
-  openTab(tab);
-  (tab === 'import' ? byId('file') : tabs[2]).focus();
+  resetView();
+  byId('file').focus();
   message('Preview cancelled. Your collection is intact.');
 });
-async function close() {
-  if (closing) return;
-  closing = true;
-  cancelPreview();
-  await hideDialog(dialog, returnFocus);
-  history = null;
-  byId('history').replaceChildren();
-  closing = false;
-  returnFocus.focus({ preventScroll: true });
-}
-byId('close').onclick = close;
-dialog.addEventListener('cancel', (e) => {
-  e.preventDefault();
-  close();
-});
-dialog.addEventListener('click', (event) => {
-  if (event.target !== dialog) return;
-  const r = dialog.getBoundingClientRect();
-  if (
-    event.clientX < r.left ||
-    event.clientX > r.right ||
-    event.clientY < r.top ||
-    event.clientY > r.bottom
-  )
-    close();
-});
 function refreshVault(key) {
-  if (!dialog.open) return;
+  if (dialog.hidden) return;
   if (
     [null, STORAGE_KEY, LEGACY_KEY].includes(key) &&
     preview &&
@@ -469,32 +398,42 @@ function refreshVault(key) {
   }
   if ([null, STORAGE_KEY, LEGACY_KEY, HISTORY_KEY, STATUS_KEY].includes(key)) {
     overview();
-    if (tab === 'recovery') drawHistory();
+    drawHistory();
   }
 }
 window.addEventListener('storage', (event) => refreshVault(event.key));
 window.addEventListener('cloud-collection', () => refreshVault(STORAGE_KEY));
 
-export function openVault(
-  refresh,
-  syncControl,
-  initialTab = 'export',
-  trigger = byId('open'),
-  guest = null
-) {
-  if (dialog.open || closing) return;
+export function openData(refresh, syncControl, guestTools) {
   refreshRoom = refresh;
   updateControl = syncControl;
-  returnFocus = trigger;
-  openTab(initialTab);
-  showDialog(dialog, trigger);
-  dialog.scrollTop = 0;
-  byId('close').focus({ preventScroll: true });
-  if (guest)
-    startReview(
-      guest.report,
-      'Guest journal on this device' +
-        (guest.skipped ? ' · ' + guest.skipped + ' previously deleted titles excluded' : ''),
-      guest
-    );
+  dialog.hidden = false;
+  byId('advanced').open = false;
+  resetView();
+  const count = owner && guestTools?.guestCount();
+  byId('guest').hidden = !count;
+  if (count) {
+    byId('guest').querySelector('small').textContent =
+      count + (count === 1 ? ' title on this device' : ' titles on this device');
+    byId('guest').onclick = () => {
+      try {
+        const guest = guestTools.guestPreview();
+        startReview(
+          guest.report,
+          'Guest journal on this device' +
+            (guest.skipped ? ' · ' + guest.skipped + ' previously deleted titles excluded' : ''),
+          guest
+        );
+      } catch (error) {
+        message(error.message, true);
+      }
+    };
+  }
+}
+export function closeData() {
+  cancelPreview();
+  history = null;
+  byId('history').replaceChildren();
+  byId('guest').onclick = null;
+  dialog.hidden = true;
 }

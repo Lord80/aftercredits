@@ -1,5 +1,5 @@
 """Exercise a previous release -> current service-worker upgrade on one disposable origin.
-Pass a checkout of the configured Phase 3B or 4A release as the first argument.
+Pass a checkout of the configured Phase 4A.1 release as the first argument.
 """
 
 import json
@@ -66,9 +66,9 @@ entry = dict(
 cache = dict(
     version=1,
     cursor=1,
-    rows=[dict(id=entry["id"], entry=entry, revision=1)],
+    rows=[dict(id=entry["id"], entry=dict(entry, rating=7), revision=1)],
     order=[entry["id"]],
-    pending=[],
+    pending=[dict(id=entry["id"], entry=entry)],
     flight=None,
     incoming=None,
     lastSync="2025-01-01T12:05:05Z",
@@ -100,6 +100,14 @@ with ThreadingHTTPServer(("127.0.0.1", 0), Fixture) as server, sync_playwright()
     expect(page.locator("#headline")).to_have_text(entry["title"])
     page.wait_for_function("!!navigator.serviceWorker.controller")
     assert page.evaluate("v=>caches.keys().then(keys=>keys.some(k=>k.includes(v)))", prior_release)
+    page.locator("[data-layout=gallery]").click()
+    page.locator("#query").fill("archive")
+    page.locator("#order").select_option("highest")
+    pref_key = prefix + uid + ".aftercredits.discovery.v1"
+    saved = page.evaluate(
+        "keys=>keys.map(k=>localStorage.getItem(k))",
+        [prefix + "session", prefix + uid + ".archive", pref_key],
+    )
     release[0] = ROOT
     page.evaluate("async()=>{const r=await navigator.serviceWorker.ready;await r.update()}")
     page.evaluate("""async()=>{const r=await navigator.serviceWorker.ready;
@@ -107,7 +115,7 @@ with ThreadingHTTPServer(("127.0.0.1", 0), Fixture) as server, sync_playwright()
         const w=r.installing;if(!w)throw Error('No pending upgrade');
         w.onstatechange=()=>{if(w.state==='installed')resolve();if(w.state==='redundant')reject(Error('Install failed'))}
       })}""")
-    assert not page.locator("#account-open").count()
+    assert not page.locator("#center-nav").count()
     observer = context.new_page()
     observer.goto(urlsplit_origin + "/upgrade-check.html")
     observer.evaluate(
@@ -131,8 +139,14 @@ with ThreadingHTTPServer(("127.0.0.1", 0), Fixture) as server, sync_playwright()
         "([old,next])=>caches.keys().then(keys=>keys.some(k=>k.includes(next))&&!keys.some(k=>k.includes(old)))",
         [prior_release, next_release],
     )
-    page.locator("[data-layout=gallery]").click()
-    page.locator("#query").fill("archive")
+    assert (
+        page.evaluate(
+            "keys=>keys.map(k=>localStorage.getItem(k))",
+            [prefix + "session", prefix + uid + ".archive", pref_key],
+        )
+        == saved
+    )
+    expect(page.locator("#order")).to_have_value("highest")
     expect(page.locator(".library-card")).to_have_count(1)
     context.set_offline(True)
     page.reload()
@@ -151,7 +165,7 @@ with ThreadingHTTPServer(("127.0.0.1", 0), Fixture) as server, sync_playwright()
     page.reload()
     value = page.evaluate("k=>JSON.parse(localStorage.getItem(k))", prefix + uid + ".archive")
     assert value["pending"][0]["entry"] == dict(entry, rating=8)
-    assert value["rows"][0]["entry"] == entry and not errors, errors
+    assert value["rows"][0]["entry"] == dict(entry, rating=7) and not errors, errors
     expect(page.locator("#active-filters")).to_contain_text("Manual")
     browser.close()
 print(

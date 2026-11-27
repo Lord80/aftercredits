@@ -1,15 +1,19 @@
-import { accountKey, owner, requireSession, prefix } from './scope.js';
+import { accountKey, owner, requireSession, prefix, session } from './scope.js';
 import { active, acknowledge, cacheAt, overlay, reconcile, withEntries } from './cache.js';
 import { rpc } from './auth.js';
 import { requireEntries } from '../validation.js';
 
 const notify = () => window.dispatchEvent(new Event('cloud-state'));
+const foregroundInterval = 60000;
 let phase = '',
   failure = '',
   timer,
-  attempt = 0,
-  busy = false,
+  periodic,
+  activeRequest,
   requested = false;
+let attempt = 0,
+  started = false,
+  suspended = false;
 const lock = (id, fn) =>
   navigator.locks.request(accountKey(id), async () => {
     requireSession(id);
@@ -20,13 +24,13 @@ function store(id, c, refresh = true) {
   localStorage.setItem(accountKey(id), JSON.stringify(c));
   if (refresh && owner === id) window.dispatchEvent(new Event('cloud-collection'));
 }
-async function pull(id, base, cursor) {
+async function pull(id, base, cursor, signal) {
   let after = cursor,
     head = null;
   const changes = [];
   for (;;) {
     requireSession(id);
-    const page = await rpc(id, 'ac_pull', { after_revision: after, pinned_head: head });
+    const page = await rpc(id, 'ac_pull', { after_revision: after, pinned_head: head }, signal);
     if (page?.status === 'stale') return null;
     if (
       page?.status !== 'ok' ||
@@ -53,6 +57,7 @@ async function pull(id, base, cursor) {
     if (page.rows.length < 100 || after === head) break;
   }
   if (after !== head) throw new Error('Incomplete change page. The local cursor was preserved.');
+  if (!changes.length) return { rows: base, cursor: head };
   const rows = overlay(base, changes);
   requireEntries(active(rows));
   return { rows, cursor: head };
@@ -72,24 +77,42 @@ export function syncStatus() {
               ? 'Synced'
               : 'Pending changes'),
     pending: c.pending.length,
+    inFlight: Boolean(c.flight),
     last: c.lastSync,
     error: failure,
   };
 }
-async function cycle(id) {
+async function cycle(id, signal) {
   const key = accountKey(id);
   for (let turn = 0; turn < 12; turn++) {
+    signal.throwIfAborted();
     const c = cacheAt(key);
-    if (c.incoming) return;
+    if (c.incoming) {
+      const waiting = await lock(id, () => {
+        const latest = cacheAt(key);
+        if (!latest.incoming) return false;
+        const merged = reconcile(latest, latest.incoming);
+        if (merged.conflicts.length) return true;
+        store(id, withEntries({ ...latest, ...latest.incoming, incoming: null }, merged.entries));
+        return false;
+      });
+      if (waiting) return;
+      continue;
+    }
     if (c.flight) {
       const f = c.flight;
       let res;
       try {
-        res = await rpc(id, 'ac_apply', {
-          operation_id: f.id,
-          expected: f.expected,
-          changes: f.changes,
-        });
+        res = await rpc(
+          id,
+          'ac_apply',
+          {
+            operation_id: f.id,
+            expected: f.expected,
+            changes: f.changes,
+          },
+          signal
+        );
       } catch (error) {
         // A rejected transaction did not commit. Keep local edits editable for repair.
         // A timeout or lost reply must replay the exact same operation.
@@ -109,7 +132,7 @@ async function cycle(id) {
       });
       continue;
     }
-    const remote = await pull(id, c.rows, c.cursor);
+    const remote = await pull(id, c.rows, c.cursor, signal);
     if (!remote) continue;
     const done = await lock(id, () => {
       let latest = cacheAt(key);
@@ -136,7 +159,7 @@ async function cycle(id) {
     });
     if (done) return;
   }
-  throw new Error('Cloud activity continued during sync. Try Sync now again.');
+  throw new Error('Cloud activity continued during sync. Please try again.');
 }
 export function conflictPreview() {
   const c = cacheAt(accountKey(owner));
@@ -156,76 +179,142 @@ export async function resolveConflicts(token, choices) {
   });
   schedule();
 }
-export function schedule(delay = 200) {
-  if (!owner) return;
-  clearTimeout(timer);
-  if (busy) {
-    requested = true;
-    return;
-  }
-  timer = setTimeout(syncNow, delay);
+function available() {
+  return owner && !suspended && navigator.onLine && !document.hidden && session()?.id === owner;
 }
-export async function syncNow() {
-  if (!owner || busy || !navigator.onLine) {
-    notify();
+function schedule(delay = 180, freshness = 0) {
+  if (!available()) return;
+  if (activeRequest) {
+    if (!freshness) requested = true;
     return;
   }
   clearTimeout(timer);
-  busy = true;
-  phase = 'Syncing';
-  failure = '';
-  notify();
+  timer = setTimeout(() => synchronize(freshness), delay);
+}
+function armForegroundCheck() {
+  clearTimeout(periodic);
+  if (!available() || failure) return;
+  periodic = setTimeout(() => synchronize(foregroundInterval - 2000), foregroundInterval);
+}
+async function synchronize(freshness = 0) {
+  if (!available() || activeRequest) return;
+  clearTimeout(timer);
+  clearTimeout(periodic);
+  const controller = new AbortController();
+  activeRequest = controller;
   let retry = false;
   try {
     await navigator.locks.request(
       prefix + '.sync.' + owner,
       { ifAvailable: true },
       async (grant) => {
-        if (grant) await cycle(owner);
+        if (!grant || !available()) return;
+        const c = cacheAt(accountKey(owner));
+        const age = Date.now() - Date.parse(c.lastSync);
+        if (
+          !c.incoming &&
+          freshness &&
+          !failure &&
+          !c.flight &&
+          !c.pending.length &&
+          age >= 0 &&
+          age < freshness
+        )
+          return;
+        phase = 'Syncing';
+        failure = '';
+        notify();
+        await cycle(owner, controller.signal);
+        attempt = 0;
+        phase = '';
       }
     );
-    attempt = 0;
-    phase = '';
   } catch (error) {
-    phase = 'Error';
-    failure = error.message;
-    retry = error.transient && attempt < 5;
-    if (retry) attempt++;
+    if (controller.signal.aborted) {
+      phase = '';
+    } else {
+      phase = 'Error';
+      failure = error.message;
+      retry = error.transient && attempt < 5;
+      if (retry) attempt++;
+    }
   } finally {
-    busy = false;
+    activeRequest = null;
     notify();
-    if (retry) schedule(Math.min(60000, 1000 * 2 ** attempt));
-    else if (requested && !failure) schedule();
+    const again = requested;
     requested = false;
-  }
-}
-export function startSync() {
-  window.addEventListener('cloud-edit', () => {
-    attempt = 0;
-    schedule();
-    notify();
-  });
-  for (const event of ['online', 'focus'])
-    window.addEventListener(event, () => {
-      attempt = 0;
-      schedule();
-    });
-  document.addEventListener('visibilitychange', () => {
-    if (!document.hidden) schedule();
-  });
-  window.addEventListener('offline', notify);
-  window.addEventListener('storage', (event) => {
-    if (event.key === accountKey(owner)) {
-      notify();
+    if (retry) schedule(1000 * 2 ** attempt);
+    else if (again && !failure) schedule();
+    else {
       try {
-        const c = cacheAt(accountKey(owner));
-        if (!busy && !c.incoming && c.pending.length && !c.flight) schedule();
+        if (!cacheAt(accountKey(owner)).incoming) armForegroundCheck();
       } catch {
-        phase = 'Error';
-        failure = 'The account cache could not be read. Its stored data is protected.';
-        notify();
+        /* A protected cache needs user intervention. */
       }
     }
+  }
+}
+export function syncNow() {
+  attempt = 0;
+  return synchronize();
+}
+function pause() {
+  clearTimeout(timer);
+  clearTimeout(periodic);
+  requested = false;
+  activeRequest?.abort();
+  notify();
+}
+export function startSync() {
+  if (!owner || started) return;
+  started = true;
+  const resume = (freshness = 0) => {
+    if (available()) {
+      attempt = 0;
+      schedule(180, freshness);
+    }
+  };
+  window.addEventListener('cloud-edit', () => {
+    resume();
+    notify();
   });
-  schedule();
+  window.addEventListener('online', () => resume());
+  window.addEventListener('offline', pause);
+  window.addEventListener('focus', () => resume(2000));
+  document.addEventListener('visibilitychange', () => (document.hidden ? pause() : resume()));
+  window.addEventListener('pagehide', () => {
+    suspended = true;
+    pause();
+  });
+  window.addEventListener('pageshow', () => {
+    suspended = false;
+    resume();
+  });
+  for (const event of ['cloud-signing-out', 'cloud-session-ended'])
+    window.addEventListener(event, () => {
+      suspended = true;
+      pause();
+    });
+  window.addEventListener('cloud-signout-cancelled', () => {
+    suspended = false;
+    resume();
+  });
+  window.addEventListener('storage', (event) => {
+    if (event.key !== accountKey(owner)) return;
+    try {
+      const c = cacheAt(accountKey(owner));
+      if (c.incoming) clearTimeout(timer);
+      else if (c.pending.length || c.flight) schedule();
+      else if (phase === 'Error' && c.lastSync !== JSON.parse(event.oldValue || 'null')?.lastSync) {
+        phase = failure = '';
+        attempt = 0;
+        armForegroundCheck();
+      }
+    } catch {
+      phase = 'Error';
+      failure = 'The saved copy on this device needs attention.';
+    }
+    notify();
+  });
+  resume();
 }

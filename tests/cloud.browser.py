@@ -49,7 +49,7 @@ GUEST_BYTES = json.dumps(dict(version=2, entries=[MOVIE, SERIES]), ensure_ascii=
 
 
 @contextmanager
-def site(registration=False, captcha=""):
+def site(registration=False, captcha="", recovery=True):
     class Pages(SimpleHTTPRequestHandler):
         def log_message(self, *args):
             pass
@@ -65,6 +65,8 @@ def site(registration=False, captcha=""):
                     + json.dumps(registration)
                     + ",turnstileSiteKey="
                     + json.dumps(captcha)
+                    + ",recoveryEmailEnabled="
+                    + json.dumps(recovery)
                     + ";"
                 ).encode()
                 self.send_response(200)
@@ -99,19 +101,17 @@ def button(page, name):
 
 
 def account(page):
-    if page.locator("#vault").is_visible():
-        page.locator("#vault-close").click()
     if not page.locator("#account-dialog").is_visible():
         page.locator("#account-open").click()
     expect(page.locator("#account-dialog")).to_be_visible()
-    if button(page, "Back to account").is_visible():
-        button(page, "Back to account").click()
+    if read(page, SESSION) and page.locator("#account-heading").inner_text() != "Overview":
+        page.locator("[data-center=overview]").click()
 
 
 def vault(page):
     if not page.locator("#vault").is_visible():
         account(page)
-        button(page, "Data & backup").click()
+        page.locator("[data-center=data]").click()
         expect(page.locator("#vault")).to_be_visible()
 
 
@@ -199,20 +199,29 @@ def signed_in(page, uid=None):
 
 def synced(page):
     account(page)
-    expect(page.locator(".cloud-state")).to_have_text("Up to date", timeout=16000)
+    expect(page.locator(".cloud-state")).to_have_text("All changes saved", timeout=16000)
 
 
 def force(page):
     account(page)
-    button(page, "Settings").click()
-    button(page, "Sync now").click()
-    expect(page.locator(".cloud-state")).to_have_text("Up to date", timeout=16000)
-    button(page, "Back to account").click()
+    key = "aftercredits.cloud.v1." + HOST + "." + json.loads(read(page, SESSION))["id"] + ".archive"
+    last = json.loads(read(page, key))["lastSync"]
+    page.evaluate("window.dispatchEvent(new Event('online'))")
+    page.wait_for_function(
+        "([k,last])=>{const c=JSON.parse(localStorage[k]);return c.lastSync!==last&&!c.pending.length&&!c.flight}",
+        arg=[key, last],
+        timeout=16000,
+    )
+    expect(page.locator(".cloud-state")).to_have_text("All changes saved")
 
 
 def signout(page):
     account(page)
-    button(page, "Sign out").click()
+    if not page.locator("#center-signout").is_visible():
+        page.locator("[data-center=security]").click()
+        button(page, "Sign out of this device").click()
+    else:
+        page.locator("#center-signout").click()
     page.wait_for_function("key=>!localStorage.getItem(key)", arg=SESSION)
     page.wait_for_function("async()=>!(await import('./js/cloud/scope.js')).owner")
     account(page)
@@ -274,24 +283,26 @@ def run(browser, url, s, folder):
     signed_in(pa, uid)
     assert head() == 0 and entries(pa) == [] and read(pa, GUEST) == GUEST_BYTES
     synced(pa)
-    button(pa, "Review guest titles (2)").click()
+    vault(pa)
+    pa.locator("#vault-guest").click()
     expect(pa.locator("#vault-preview-title")).to_have_text("Review guest titles")
     expect(pa.locator(".vault-modes")).to_be_hidden()
     capture(pa, folder, "guest-import")
     pa.locator("#vault-cancel").click()
     assert entries(pa) == [] and head() == 0
     account(pa)
-    button(pa, "Review guest titles (2)").click()
+    vault(pa)
+    pa.locator("#vault-guest").click()
     pa.locator("#vault-apply").click()
     expect(pa.locator("#vault-preview")).to_be_hidden()
     force(pa)
     assert read(pa, GUEST) == GUEST_BYTES and head() == 2
     expect(pa.locator("body")).to_have_attribute("data-browse", "screening")
     expect(pa.locator("#query")).to_have_value("")
-    button(pa, "Settings").click()
+    pa.locator("[data-center=profile]").click()
     pa.get_by_label("Display name").fill("Mira")
     button(pa, "Save name").click()
-    expect(pa.locator("#account-heading")).to_have_text("Mira")
+    expect(pa.locator("#center-name")).to_have_text("Mira")
     pa.locator("#account-close").click()
     pa.locator('[data-layout="compact"]').click()
     pa.locator("#query").fill("Transit")
@@ -304,9 +315,10 @@ def run(browser, url, s, folder):
     login(pb, email, pw)
     signed_in(pb, uid)
     synced(pb)
-    expect(pb.locator("#account-heading")).to_have_text("Mira")
-    button(pb, "Review guest titles (2)").click()
-    expect(pb.locator("#vault-summary")).to_contain_text("Duplicates1Conflicts1")
+    expect(pb.locator("#center-name")).to_have_text("Mira")
+    vault(pb)
+    pb.locator("#vault-guest").click()
+    expect(pb.locator("#vault-summary")).to_contain_text("Already saved1Different versions1")
     expect(pb.locator("#vault-apply")).to_be_disabled()
     pb.get_by_label("Use the guest version").check()
     pb.evaluate("([k,v])=>localStorage.setItem(k,v)", [GUEST, GUEST_BYTES])
@@ -333,7 +345,7 @@ def run(browser, url, s, folder):
     # A real transaction commits; the client never gets the reply.
     net["drop"] = True
     new = change(pa, dict(action="add", mediaType="movie", title="Lost reply", rating=9.5))
-    expect(pa.locator(".cloud-state")).to_contain_text("Sync paused", timeout=16000)
+    expect(pa.locator(".cloud-state")).to_contain_text("Needs attention", timeout=16000)
     assert net["lost"] and pg_count() == 2 and json.loads(read(pa, key))["flight"]
     pa.reload()
     assert json.loads(read(pa, key))["flight"]
@@ -355,11 +367,8 @@ def run(browser, url, s, folder):
     force(pb)
     net["block"] = False
     a.set_offline(False)
-    button(pa, "Settings").click()
-    button(pa, "Sync now").click()
-    expect(pa.locator(".cloud-state")).to_contain_text("Changes need review")
-    button(pa, "Back to account").click()
-    button(pa, "Review sync conflicts").click()
+    expect(pa.locator(".cloud-state")).to_contain_text("Needs attention")
+    button(pa, "Review changes").click()
     expect(button(pa, "Confirm resolutions")).to_be_disabled()
     expect(pa.locator(".account-comparison dd")).to_have_text(["7.5 / 10", "6.0 / 10"])
     capture(pa, folder, "conflict-desktop")
@@ -388,7 +397,6 @@ def run(browser, url, s, folder):
 
     def upload(data):
         vault(pa)
-        pa.locator('[data-vault-tab="import"]').click()
         pa.locator("#vault-file").set_input_files(
             dict(
                 name="archive.json",
@@ -413,6 +421,7 @@ def run(browser, url, s, folder):
     expect(pb.locator(".library-card")).to_have_count(1)
     expect(pb.locator(".library-title")).to_have_text("Transit")
     upload([SERIES])
+    pa.locator("#vault-replace summary").click()
     pa.locator('[name="vault-mode"][value="restore"]').check()
     replace()
     force(pa)
@@ -420,7 +429,7 @@ def run(browser, url, s, folder):
     assert entries(pb) == [SERIES]
     expect(pb.locator(".library-card")).to_have_count(0)
     vault(pa)
-    pa.locator('[data-vault-tab="recovery"]').click()
+    pa.locator("#vault-advanced summary").first.click()
     pa.locator("#vault-history button").first.click()
     replace()
     force(pa)
@@ -451,7 +460,7 @@ def run(browser, url, s, folder):
     expect(pa.locator("body")).to_have_attribute("data-browse", "screening")
     expect(pa.locator("#query")).to_have_value("")
     vault(pa)
-    pa.locator('[data-vault-tab="recovery"]').click()
+    pa.locator("#vault-advanced summary").first.click()
     assert pa.locator("#vault-history button").count() == 0
     account(pa)
     signout(pa)
@@ -533,7 +542,7 @@ def paginated_archive(browser, url, services):
     login(page, email, password)
     signed_in(page, uid)
     synced(page)
-    expect(page.get_by_text("Review guest titles", exact=False)).to_have_count(0)
+    expect(page.get_by_role("button", name="Review guest titles", exact=False)).to_have_count(0)
     path = services["rest"] + "/rpc/"
     count = 205
     status, raw = http(
@@ -556,9 +565,8 @@ def paginated_archive(browser, url, services):
     data = [record(str(n), "Transit " + str(n)) for n in range(count)]
     assert apply(0, data)["head"] == count
     network["page_failure"] = True
-    button(page, "Settings").click()
-    button(page, "Sync now").click()
-    expect(page.locator(".cloud-state")).to_contain_text("Sync paused")
+    page.evaluate("window.dispatchEvent(new Event('online'))")
+    expect(page.locator(".cloud-state")).to_contain_text("Needs attention")
     cache = json.loads(read(page, "aftercredits.cloud.v1." + HOST + "." + uid + ".archive"))
     assert cache["cursor"] == 0 and entries(page) == []
     with ThreadPoolExecutor(max_workers=2) as writers:
